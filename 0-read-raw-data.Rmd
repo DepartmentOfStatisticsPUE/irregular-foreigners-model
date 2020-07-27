@@ -28,7 +28,8 @@ excel_sheets(excel_file) %>%
            group_by(appreh, place, citizen_iso, citizen_name) %>%
            summarise_at(vars(women_0_17:men_65), sum, na.rm = T), .id = "half") %>%
   mutate(year = str_extract(half, "\\d{4}"),
-         half = str_extract(half, "I{1,2}")) -> sg
+         half = str_extract(half, "I{1,2}")) %>%
+  filter(year == 2019) -> sg
 ```
 
 ```{r}
@@ -41,6 +42,10 @@ sg %>%
          `Ukraine` = `Ukraina`, `Russia` = Rosja, `Belarus` = `Białoruś`) %>%
   xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
   print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+```
+
+```{r}
+saveRDS(object = sg, file = "data/data-border-guards.rds")
 ```
 
 Police data for 2019

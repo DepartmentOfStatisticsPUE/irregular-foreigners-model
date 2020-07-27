@@ -1,0 +1,57 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Packages
+
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(xtable)
+```
+
+Apprehensions for 2019
+
+```{r}
+excel_file <- "~/git/zbiory/cudzoziemcy/Straz graniczna/niel pobyt 2018-2019-szczegoly.xlsx"
+excel_sheets(excel_file) %>%
+  set_names() %>%
+  map_df(~ read_excel(path = excel_file, sheet = .x, skip = 5, 
+                      col_names = c("appreh", "place", "woj", "citizen_iso", "citizen_name", 
+                                                  "women_0_17", "women_18_59", "women_60",
+                                                  "men_0_17", "men_18_64", "men_65", "total"),
+                      col_types = c(rep("text", 5), rep("numeric", 7))) %>%
+           fill(appreh, place, woj) %>%
+           filter(str_detect(appreh, "Suma|RAZEM|zatrzymanie", negate = T)) %>%
+           group_by(appreh, place, citizen_iso, citizen_name) %>%
+           summarise_at(vars(women_0_17:men_65), sum, na.rm = T), .id = "half") %>%
+  mutate(year = str_extract(half, "\\d{4}"),
+         half = str_extract(half, "I{1,2}")) -> sg
+```
+
+```{r}
+sg %>%
+  ungroup() %>%
+  count(year, half, appreh, place, wt = women_18_59+women_60+men_18_64+men_65) %>%
+  spread(place, n, fill = 0) %>%
+  mutate(appreh = ifelse(appreh == "tak", "yes", "no")) %>%
+  select(year, half, `same year` = appreh, `within country`= kraj, `airports` = `lotnicza zewnętrzna`,
+         `Ukraine` = `Ukraina`, `Russia` = Rosja, `Belarus` = `Białoruś`) %>%
+  xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+```
+
+Police data for 2019
+
+```{r}
+
+```
+
+PESEL data for 2019
+
+
+Joining the data
+
+

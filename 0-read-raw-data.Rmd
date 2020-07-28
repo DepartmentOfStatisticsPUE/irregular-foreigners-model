@@ -10,6 +10,7 @@ Packages
 library(tidyverse)
 library(readxl)
 library(xtable)
+library(countrycode)
 ```
 
 Apprehensions for 2019
@@ -126,6 +127,21 @@ pesel %>%
 ```
 
 
+```{r}
+pesel %>%
+  filter(status_zameldowania %in% 2:3) %>%
+  count(quarter = stan_na, country = nazwa_kraju_obywatelstwa, country_code = kod_kraju_obywatelstwa, 
+        sex = plec, age = wiek, wt = liczba_cudzoziemcow) -> pesel_aggr
+```
+
+```{r}
+saveRDS(object = pesel_aggr, file = "data/data-pesel.rds")
+```
+
 Joining the data
+
+```{r}
+
+```
 
 

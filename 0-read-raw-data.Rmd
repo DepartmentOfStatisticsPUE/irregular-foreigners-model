@@ -45,16 +45,85 @@ sg %>%
 ```
 
 ```{r}
+sg %>%
+  ungroup()  %>%
+  count(half, appreh, place) %>%
+  filter(place == "kraj")
+```
+
+```{r}
 saveRDS(object = sg, file = "data/data-border-guards.rds")
 ```
 
 Police data for 2019
 
 ```{r}
+map_df(1:4, ~ read_excel(path = "~/git/zbiory/cudzoziemcy/Policja/Osoba-cudzoziemcy-rok 2019.xls",  
+                         sheet = .x, 
+                         skip = 2, .name_repair = janitor::make_clean_names) %>%
+  fill(id_ksip_oio, wiek, plec, obywatelstwo, data_wprowadzenia_rok, data_wprowadzenia_kwartal),
+  #mutate(pesel_tak_nie = ifelse(is.na(pesel_tak_nie), "NIE", pesel_tak_nie)),
+  .id = 'sheet') %>%
+  mutate(sheet = case_when(sheet == 1 ~ "process",
+                           sheet == 2 ~ "criminal",
+                           sheet == 3 ~ "searching",
+                           sheet == 4  ~ "traffic")) %>%
+  group_by(sheet, id_ksip_oio) %>%
+  fill(pesel_tak_nie)  %>%
+  ungroup() -> police
 
+police %>%
+  mutate(half = ifelse(data_wprowadzenia_kwartal %in% 1:2, "I", "II")) %>%
+  distinct(sheet, id_ksip_oio, pesel_tak_nie, half) %>%
+  mutate(pesel_tak_nie = replace_na(pesel_tak_nie, "NIE"), 
+         PESEL= factor(pesel_tak_nie, c("TAK", "NIE"), c("Yes", "No"), ordered = T)) %>%
+  count(year = as.character(2019), half, PESEL, type = sheet) %>%
+  spread(type, n, fill = 0) %>%
+  select(year:PESEL, process, searching, traffic, criminal) %>%
+  xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+```
+
+```{r}
+saveRDS(object = police, file = "data/data-police.rds")
 ```
 
 PESEL data for 2019
+
+1 = brak adresu w Polsce 2 = aktualny pobyt czasowy 3 = aktualny pobyt stały 4 = wymeldowny donikąd 5 = nieaktualny pobyt czasowy 6 = kraj zamieszkania poza Polską)
+Płeć: 1-kob, 2-mężczy
+Wiek
+- podział na ekonomiczne grupy wieku: 1 = - wiek przedprodukcyjny — do 17 lat
+- wiek produkcyjny: 2 = - dla męczyzn — 18-64, 3 = - dla kobiet — 18-59,
+- wiek poprodukcyjny 4 =- dla mężczyzn — 65 i więcej, 5 = - dla kobiet — 60 i więcej.
+
+Stan cywilny
+1 = kawaler, panna; 2 = żonaty, zamężna; 3 = wdowiec, wdowa; 4 = rozwiedziony, rozwiedziona; null = brak danych
+
+Woj
+Miejsce zameldowania lub ostatniego zameldowania (jeżeli jest podane w rejestrze PESEL).
+Kody w nawiasach
+null = brak danych
+DOLNOŚLĄSKIE (02) KUJAWSKO-POMORSKIE (04) LUBELSKIE (06) LUBUSKIE (08) ŁÓDZKIE (10) MAŁOPOLSKIE (12) MAZOWIECKIE (14) OPOLSKIE (16) PODKARPACKIE (18) PODLASKIE (20) POMORSKIE (22) ŚLĄSKIE (24) ŚWIĘTOKRZYSKIE (26) WARMIŃSKO-MAZURSKIE (28) WIELKOPOLSKIE (30) ZACHODNIOPOMORSKIE (32)
+
+BYŁE WARSZAWSKIE (01) BYŁE BIALSKOPODLASKI (03) BYŁE BIAŁOSTOCKIE (05) BYŁE BIELSKIE (07) BYŁE BYDGOSKIE (09) BYŁE CHEŁMSKIE (11) BYŁE CIECHANOWSKIE (13) BYŁE CZĘSTOCHOWSKIE (15) BYŁE ELBLĄSKIE (17) BYŁE GDAŃSKIE (19) BYŁE GORZOWSKIE (21) BYŁE JELENIOGÓRSKIE (23) BYŁE KALISKIE (25) BYŁE KATOWICKIE (27) BYŁE KIELECKIE (29) BYŁE KONIŃSKIE (31) BYŁE KOSZALIŃSKIE (33) BYŁE KRAKOWSKIE (35) BYŁE KROŚNIEŃSKIE (37) BYŁE LEGNICKIE (39) BYŁE LESZCZYŃSKIE (41) BYŁE LUBELSKIE (43) BYŁE ŁOMŻYŃSKIE (45) BYŁE ŁÓDZKIE (47) BYŁE NOWOSĄDECKIE (49) BYŁE OLSZTYŃSKIE (51) BYŁE OPOLSKIE (53) BYŁE OSTROŁĘCKIE (55) BYŁE PILSKIE (57) BYŁE PIOTRKOWSKIE (59) BYŁE PŁOCKIE (61) BYŁE POZNAŃSKIE (63) BYŁE PRZEMYSKIE (65) BYŁE RADOMSKIE (67) BYŁE RZESZOWSKIE (69) BYŁE SIEDLECKIE (71) BYŁE SIERADZKIE (73) BYŁE SKIERNIEWICKIE (75) BYŁE SŁUPSKIE (77) BYŁE SUWALSKIE (79) BYŁE SZCZECIŃSKIE (81) BYŁE TARNOBRZESKIE (83) BYŁE TARNOWSKIE (85) BYŁE TORUŃSKIE (87) BYŁE WAŁBRZYSKIE (89) BYŁE WŁOCŁAWSKIE (91) BYŁE WROCŁAWSKIE (93) BYŁE ZAMOJSKIE (95) BYŁE ZIELONOGÓRSKIE (97) NIEZNANE (99)
+
+
+```{r}
+map_df(1:4, ~ read_excel(path ="~/git/zbiory/cudzoziemcy/PESEL/cudzoziemcy-pesel-2019.xlsx",
+                            sheet = .x, 
+                            .name_repair = janitor::make_clean_names, range = cell_cols(1:14))) -> pesel
+```
+
+```{r}
+pesel %>%
+  count(as_of = stan_na, status_zameldowania, wt = liczba_cudzoziemcow) %>%
+  mutate(status_zameldowania = factor(status_zameldowania, 1:6, 
+                                      c("No address in Poland", "Temporal", "Permanent", "Deregistered", "Out-of-date temporal", "Outside Poland"))) %>%
+  spread(status_zameldowania, n) %>%
+  xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+```
 
 
 Joining the data

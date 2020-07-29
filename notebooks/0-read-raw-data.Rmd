@@ -53,7 +53,7 @@ sg %>%
 ```
 
 ```{r}
-saveRDS(object = sg, file = "data/data-border-guards.rds")
+saveRDS(object = sg, file = "../data/data-border-guards.rds")
 ```
 
 Police data for 2019
@@ -86,7 +86,7 @@ police %>%
 ```
 
 ```{r}
-saveRDS(object = police, file = "data/data-police.rds")
+saveRDS(object = police, file = "../data/data-police.rds")
 ```
 
 PESEL data for 2019
@@ -135,13 +135,144 @@ pesel %>%
 ```
 
 ```{r}
-saveRDS(object = pesel_aggr, file = "data/data-pesel.rds")
+saveRDS(object = pesel_aggr, file = "../data/data-pesel.rds")
 ```
 
 Joining the data
 
+- align names
+- align ages
+- fix names
+- join only non-EU citizens
+
 ```{r}
+dict_full <- read_delim("../data-raw/country-dictionary.csv", delim = ";") %>%
+  mutate(iso3n = str_pad(iso3n, width = 3, pad = "0",side = "left"))
+```
+
+
+```{r}
+sg %>%
+  select(-women_0_17,-men_0_17) %>%
+  gather(sex, border, women_18_59:men_65) %>%
+  separate(sex, into = c("sex", "age"), sep = "_", extra = "merge") %>%
+  filter(border > 0, appreh == "nie", place == "kraj") %>%
+  select(year, half, country_name = citizen_name, country_iso = citizen_iso, sex, age, border) %>%
+  mutate(country_iso3n = countrycode(country_iso, "iso3c", "iso3n"),
+         age = ifelse(age %in% c("60", "65"), 2, 1),
+         sex = ifelse(sex == "women", 1, 2),
+         country_name = tolower(country_name),
+         country_iso3n = str_pad(country_iso3n, 3, "left", 0),
+         country_iso3n = ifelse(country_name == "kosovo", "567", country_iso3n),
+         country_iso3n = replace_na(country_iso3n, "999")) %>%
+  ungroup() %>%
+  select(half,sex, age, country_name, country_iso3n, country_iso, border) -> sg_prepared
+```
+
+```{r}
+police %>%
+  filter(wiek >= 18, sheet != "searching") %>%
+  mutate(sex = ifelse(plec == "Mężczyzna", 2, 1),
+         age = case_when(sex == 1 & wiek >= 60 ~ 2,
+                         sex == 2 & wiek >= 65 ~ 2,
+                         TRUE ~ 1),
+         half = ifelse(data_wprowadzenia_kwartal %in% 1:2, "I", "II"),
+         registered = !is.na(pesel_tak_nie),
+         country_name = tolower(obywatelstwo)) %>%
+  arrange(id_ksip_oio) %>%
+  distinct(id_ksip_oio, sex, age, registered, country_name, half) %>%
+  count(sex, age, registered, country_name, half) %>%
+  spread(registered, n, fill = 0) %>%
+  rename(police_nonreg = `FALSE`, police_reg = `TRUE`) %>%
+  mutate(police_all = police_nonreg + police_reg) %>%
+  left_join(dict_full %>% select(country_name=country, country_iso3n=iso3n)) %>%
+  mutate(country_iso3n = case_when(
+    country_name  == "aruba" ~ "533",
+    country_name  %in% c("czechosłowacja", "jugosławia") ~ "999",
+    country_name  == "jugosławia (serbia i czarnogóra)" ~ "688", 
+    country_name  == "gwinea bissau" ~ "624",
+    country_name  == "hongkong" ~ "344",
+    country_name  == "kostaryka" ~ "188",
+    country_name  == "laos" ~ "418",
+    country_name  == "madagaskar" ~ "450",
+    country_name  == "malezja" ~ "458",
+    country_name  == "mauretania" ~ "478",
+    country_name == "namibia" ~ "516",
+    country_name == "panama" ~ "591",
+    country_name == "ruanda" ~ "646",
+    country_name == "salwador" ~ "222",
+    country_name == "tajlandia (syjam)" ~ "764",
+    country_name == "wyspy świętego tomasza i książęca" ~ "678",
+    country_name == "wyspy zielonego przylądka" ~ "132",
+    country_name == "andora" ~ "020",
+    country_name == "antigua i barbuda" ~ "028",
+    country_name == "kambodża (kampucza)" ~ "116",
+    TRUE ~ country_iso3n
+  ))   -> police_prepared
+
 
 ```
 
+```{r}
+# different codding
+pesel %>%
+  filter(wiek != 1, status_zameldowania %in% 2:3) %>%
+  mutate(half = case_when(stan_na == "2019.03.31" ~ "I",
+                          stan_na == "2019.06.30" ~ "Ia",
+                          stan_na == "2019.09.30" ~ "II",
+                          stan_na == "2019.12.31" ~ "IIa"),
+         country_name = tolower(nazwa_kraju_obywatelstwa),
+         age = ifelse(wiek %in% 2:3, 1, 2)) %>%
+  count(half, country_name, age, sex=plec, wt = liczba_cudzoziemcow, name = "pesel") %>%
+  left_join(dict_full %>% filter(source3 == "pesel") %>% select(country_name=country, country_iso3n=iso3n)) %>%
+  mutate(country_iso3n = case_when(country_name == "malediwy" ~ "462",
+                                   country_name == "saint vincent i grenadyny" ~ "670",
+                                   country_name == "suazi" ~ "748",
+                                   country_name == "vanuatu" ~ "548",
+                                   TRUE ~country_iso3n )) -> pesel_prepared
+```
+
+```{r}
+pesel_prepared %>%
+  filter(half %in% c("I", "II")) %>%
+  full_join(sg_prepared %>% rename(country_name_sg = country_name)) %>%
+  full_join(police_prepared %>% rename(country_name_police = country_name)) %>% 
+  select(half, age, sex, country_iso3n, 
+         country_name_pesel = country_name, country_name_sg, country_name_police, pesel, border, matches("police")) %>%
+  mutate(eu = countrycode(country_iso3n, "genc3n", "eu28"),
+         country = countrycode(country_iso3n, "genc3n", "un.name.en"),
+         country = case_when(country_iso3n == "999" ~ "other",
+                             country_iso3n == "998" ~ "other",
+                             country_iso3n == "567" ~ "Kosovo",
+                             country_iso3n == "275" ~ "Palestine",
+                             country_iso3n == "158" ~ "Taiwan",
+                             country_iso3n == "336" ~ "Vatican city",
+                             country_iso3n == "016" ~ "American Samoa",
+                             TRUE ~ country)) %>%
+  mutate_at(vars(pesel:police_all), replace_na, 0)  %>%
+  filter(is.na(eu)) %>%
+  arrange(country, country_iso3n, half, age, sex, pesel, border, police_nonreg, police_reg, police_all) %>%
+  select(country, country_iso3n, half, age, sex, pesel, border, police_nonreg, police_reg, police_all) -> countries_all
+```
+
+```{r}
+saveRDS(countries_all, file = "../data/data-for-model.rds")
+```
+
+```{r}
+countries_all %>%
+  group_by(country, country_iso3n, half, age, sex = factor(sex)) %>%
+  summarise_at(vars(pesel:police_all), sum) %>%
+  mutate(country = ifelse(border > 0 & police_all > 0 & police_all / pesel < 1, country, "other")) %>%
+  group_by(country, half, age, sex) %>%
+  summarise_at(vars(pesel:police_all), sum) -> m
+```
+
+
+```{r}
+ggplot(data = m, aes(x = log(police_all/pesel), y = log(border/pesel), size = sqrt(pesel))) + 
+  geom_point() + geom_smooth(method = "lm") + facet_wrap(half~sex)
+ggplot(data = m, aes(x = log(pesel),y = log(border/pesel), size = sqrt(pesel))) + 
+  geom_point() + geom_smooth(method = "lm") + facet_wrap(half~sex)
+```
 

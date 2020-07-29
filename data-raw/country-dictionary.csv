@@ -1,0 +1,388 @@
+name;country;source1;source2;source3;source4;iso3n;eu28
+afganistan;afganistan;police;border;pesel;udsc;4;NA
+afganistan;afgańskie;NA;NA;zus;NA;4;NA
+albania;albania;police;border;pesel;udsc;8;NA
+albania;albańskie;NA;NA;zus;NA;8;NA
+algieria;algieria;police;border;pesel;udsc;12;NA
+algieria;algierskie;NA;NA;zus;NA;12;NA
+stany zjednoczone;amerykańskie;NA;NA;zus;NA;840;NA
+andora;andorskie;NA;NA;zus;NA;20;NA
+angola;angola;police;border;pesel;udsc;24;NA
+angola;angolskie;NA;NA;zus;NA;24;NA
+arabia saudyjska;arabia saudyjska;police;border;pesel;udsc;682;NA
+argentyna;argentyna;police;border;pesel;udsc;32;NA
+argentyna;argentyńskie;NA;NA;zus;NA;32;NA
+armenia;armenia;police;border;pesel;udsc;51;NA
+armenia;armeńskie;NA;NA;zus;NA;51;NA
+aruba;arubańskie;NA;NA;zus;NA;533;NA
+australia;australia;police;border;pesel;udsc;36;NA
+australia;australijskie;NA;NA;zus;NA;36;NA
+austria;austria;police;NA;pesel;udsc;40;NA
+austria;austriackie;NA;NA;zus;NA;40;NA
+azerbejdżan;azerbejdżan;police;border;pesel;udsc;31;NA
+azerbejdżan;azerbejdżańskie;NA;NA;zus;NA;31;NA
+bahamy;bahamy;NA;NA;pesel;NA;44;NA
+bahrajn;bahrajn;police;border;pesel;NA;48;NA
+bangladesz;bangladeskie;NA;NA;zus;NA;50;NA
+bangladesz;bangladesz;police;border;pesel;udsc;50;NA
+barbados;barbados;NA;NA;pesel;udsc;52;NA
+barbados;barbadoskie;NA;NA;zus;NA;52;NA
+belgia;belgia;police;border;pesel;NA;56;NA
+belgia;belgijskie;NA;NA;zus;NA;56;NA
+belize;belize;NA;NA;pesel;NA;84;NA
+benin;benin;NA;border;pesel;NA;204;NA
+benin;benin (dahomej);police;NA;NA;NA;204;NA
+benin;benińskie;NA;NA;zus;NA;204;NA
+niemcy;berlin zachodni;NA;NA;pesel;NA;276;EU
+kraj nieustalony;bezpaństwowcy;NA;NA;pesel;NA;999;NA
+kraj nieustalony;bezpaństwowiec;NA;border;NA;NA;999;NA
+bhutan;bhutan;NA;NA;pesel;NA;64;NA
+białoruś;białoruś;police;border;pesel;udsc;112;NA
+białoruś;białoruskie;NA;NA;zus;NA;112;NA
+mjanma (birma);birmańskie;NA;NA;zus;NA;104;NA
+boliwia;boliwia;police;border;pesel;udsc;68;NA
+boliwia;boliwijskie;NA;NA;zus;NA;68;NA
+bośnia i hercegowina;bośnia i hercegowina;police;border;pesel;udsc;70;NA
+bośnia i hercegowina;bośniacko-hercegowińskie;NA;NA;zus;NA;70;NA
+botswana;botswana;NA;NA;pesel;NA;72;NA
+botswana;botswańskie;NA;NA;zus;NA;72;NA
+brazylia;brazylia;police;border;pesel;udsc;76;NA
+brazylia;brazylijskie;NA;NA;zus;NA;76;NA
+brunei;brunei;NA;NA;pesel;NA;96;NA
+brytyjskie terytorium oceanu indyjskiego;bryt.teryt.oceanu indyjskiego;NA;NA;zus;NA;998;NA
+wielka brytania;brytyjskie;NA;NA;zus;NA;826;EU
+brytyjskie terytorium oceanu indyjskiego;brytyjskie terytorium oceanu indyjskiego;NA;border;NA;NA;998;NA
+brytyjskie wyspy dziewicze;brytyjskie wyspy dziewicze;NA;NA;zus;NA;92;NA
+bułgaria;bułgaria;police;border;pesel;NA;100;EU
+bułgaria;bułgarskie;NA;NA;zus;NA;100;EU
+burkina faso;burkina faso;NA;border;pesel;NA;854;NA
+burkina faso;burkińskie;NA;NA;zus;NA;854;NA
+burundi;burundi;NA;NA;pesel;NA;108;NA
+burundi;burundyjskie;NA;NA;zus;NA;108;NA
+chile;chile;police;border;pesel;udsc;152;NA
+chile;chilijskie;NA;NA;zus;NA;152;NA
+chiny;chińskie;NA;NA;zus;NA;156;NA
+chiny;chiny;police;border;pesel;udsc;156;NA
+chorwacja;chorwacja;police;border;pesel;NA;191;EU
+chorwacja;chorwackie;NA;NA;zus;NA;191;EU
+cypr;cypr;police;border;pesel;NA;196;EU
+cypr;cypryjskie;NA;NA;zus;NA;196;EU
+czad;czad;NA;NA;pesel;udsc;148;NA
+czad;czadyjskie;NA;NA;zus;NA;148;NA
+czarnogóra;czarnogóra;police;border;pesel;udsc;499;NA
+czarnogóra;czarnogórskie;NA;NA;zus;NA;499;NA
+kraj nieustalony;czechosłowacja;NA;NA;pesel;NA;999;NA
+czechy;czechy;police;NA;pesel;NA;203;EU
+rosja;czeczeńskie;NA;NA;zus;NA;643;NA
+czechy;czeskie;NA;NA;zus;NA;203;EU
+dania;dania;police;NA;pesel;NA;208;EU
+demokratyczna republika konga;demokratyczna republika konga;NA;border;pesel;udsc;180;NA
+demokratyczna republika konga;demokratyczna republika konga (zair);police;NA;NA;NA;180;NA
+dominika;dominika;NA;NA;pesel;NA;212;NA
+dominikana;dominikana;police;border;pesel;udsc;214;NA
+dominikana;dominikańskie;NA;NA;zus;NA;214;NA
+dania;duńskie;NA;NA;zus;NA;208;EU
+dżibuti;dżibuckie;NA;NA;zus;NA;262;NA
+dżibuti;dżibuti;NA;border;pesel;NA;262;NA
+egipt;egipskie;NA;NA;zus;NA;818;NA
+egipt;egipt;police;border;pesel;udsc;818;NA
+ekwador;ekwador;police;border;pesel;udsc;218;NA
+ekwador;ekwadorskie;NA;NA;zus;NA;218;NA
+zjednoczone emiraty arabskie;emirackie;NA;NA;zus;NA;784;NA
+erytrea;erytrea;NA;border;pesel;udsc;232;NA
+erytrea;erytrejskie;NA;NA;zus;NA;232;NA
+estonia;estonia;police;NA;pesel;NA;233;EU
+estonia;estońskie;NA;NA;zus;NA;233;EU
+etiopia;etiopia;police;border;pesel;udsc;231;NA
+etiopia;etiopskie;NA;NA;zus;NA;231;NA
+fidżi;fidżi;NA;NA;pesel;NA;242;NA
+filipiny;filipińskie;NA;NA;zus;NA;608;NA
+filipiny;filipiny;police;border;pesel;udsc;608;NA
+finlandia;finlandia;police;NA;pesel;NA;246;EU
+finlandia;fińskie;NA;NA;zus;NA;246;EU
+francja;francja;police;NA;pesel;NA;250;EU
+francja;francuskie;NA;NA;zus;NA;250;EU
+francuskie terytoria południowe;francuskie terytoria płd.;NA;NA;zus;NA;260;NA
+gabon;gabon;NA;NA;pesel;NA;266;NA
+gabon;gabońskie;NA;NA;zus;NA;266;NA
+gambia;gambia;police;border;pesel;udsc;270;NA
+gambia;gambijskie;NA;NA;zus;NA;270;NA
+ghana;ghana;police;border;pesel;udsc;288;NA
+ghana;ghańskie;NA;NA;zus;NA;288;NA
+grecja;grecja;police;NA;pesel;NA;300;EU
+grecja;greckie;NA;NA;zus;NA;300;EU
+grenada;grenada;NA;NA;pesel;NA;308;NA
+grenada;grenadyjskie;NA;NA;zus;NA;308;NA
+gruzja;gruzińskie;NA;NA;zus;NA;268;NA
+gruzja;gruzja;police;border;pesel;udsc;268;NA
+gujana;gujana;police;NA;pesel;NA;328;NA
+gujana;gujańskie;NA;NA;zus;NA;328;NA
+gwatemala;gwatemala;police;border;pesel;udsc;320;NA
+gwatemala;gwatemalskie;NA;NA;zus;NA;320;NA
+gwinea;gwinea;police;border;pesel;udsc;324;NA
+gwinea bissau;gwinea bissau;NA;border;pesel;udsc;624;NA
+gwinea równikowa;gwinea równikowa;NA;NA;pesel;NA;226;NA
+gwinea;gwinejskie;NA;NA;zus;NA;324;NA
+haiti;haitańskie;NA;NA;zus;NA;332;NA
+haiti;haiti;NA;NA;pesel;udsc;332;NA
+indie;hinduskie;NA;NA;zus;NA;356;NA
+hiszpania;hiszpania;police;NA;pesel;NA;724;EU
+hiszpania;hiszpańskie;NA;NA;zus;NA;724;EU
+holandia;holandia;police;NA;pesel;NA;528;EU
+holandia;holenderskie;NA;NA;zus;NA;528;EU
+honduras;honduras;NA;border;pesel;udsc;340;NA
+honduras;honduraskie;NA;NA;zus;NA;340;NA
+chiny - specjalny region administracyjny hongkong;hongkong;NA;border;NA;NA;344;NA
+indie;indie;police;border;pesel;udsc;356;NA
+indonezja;indonezja;police;border;pesel;udsc;360;NA
+indonezja;indonezyjskie;NA;NA;zus;NA;360;NA
+inne kraje;inne kraje;NA;NA;pesel;NA;998;NA
+irak;irackie;NA;NA;zus;NA;368;NA
+irak;irak;police;border;pesel;udsc;368;NA
+iran;iran;police;border;pesel;udsc;364;NA
+iran;irańskie;NA;NA;zus;NA;364;NA
+irlandia;irlandia;police;NA;pesel;NA;372;EU
+irlandia;irlandzkie;NA;NA;zus;NA;372;EU
+islandia;islandia;police;NA;pesel;NA;352;NA
+islandia;islandzkie;NA;NA;zus;NA;352;NA
+izrael;izrael;police;border;pesel;udsc;376;NA
+izrael;izraelskie;NA;NA;zus;NA;376;NA
+jamajka;jamajka;police;border;pesel;udsc;388;NA
+jamajka;jamajskie;NA;NA;zus;NA;388;NA
+japonia;japonia;police;border;pesel;udsc;392;NA
+japonia;japońskie;NA;NA;zus;NA;392;NA
+jemen;jemen;police;border;pesel;udsc;887;NA
+jemen;jemeńskie;NA;NA;zus;NA;887;NA
+jordania;jordania;police;border;pesel;udsc;400;NA
+jordania;jordańskie;NA;NA;zus;NA;400;NA
+kraj nieustalony;jugosławia;police;NA;pesel;NA;999;NA
+serbia;jugosławia (serbia i czarnogóra);police;NA;NA;NA;688;NA
+kambodża;kambodża;NA;NA;pesel;udsc;116;NA
+kambodża;kambodżańskie;NA;NA;zus;NA;116;NA
+kamerun;kamerun;police;border;pesel;udsc;120;NA
+kamerun;kameruńskie;NA;NA;zus;NA;120;NA
+kanada;kanada;police;border;pesel;udsc;124;NA
+kanada;kanadyjskie;NA;NA;zus;NA;124;NA
+katar;katar;NA;NA;pesel;NA;634;NA
+katar;katarskie;NA;NA;zus;NA;634;NA
+kazachstan;kazachskie;NA;NA;zus;NA;398;NA
+kazachstan;kazachstan;police;border;pesel;udsc;398;NA
+kenia;kenia;police;border;pesel;udsc;404;NA
+kenia;kenijskie;NA;NA;zus;NA;404;NA
+kirgistan;kirgiskie;NA;NA;zus;NA;417;NA
+kirgistan;kirgistan;NA;border;pesel;udsc;417;NA
+kirgistan;kirgistan (kirgizja);police;NA;NA;NA;417;NA
+kiribati;kiribati;NA;NA;pesel;NA;296;NA
+kolumbia;kolumbia;police;border;pesel;udsc;170;NA
+kolumbia;kolumbijskie;NA;NA;zus;NA;170;NA
+komory;komory;NA;border;pesel;udsc;174;NA
+kongo;kongijskie;NA;NA;zus;NA;178;NA
+kongo;kongo;police;border;pesel;udsc;178;NA
+korea północna;korea północna;NA;NA;pesel;udsc;408;NA
+korea południowa;korea południowa;police;border;pesel;udsc;410;NA
+korea północna;koreańska republika ludowo-demokratyczna;NA;border;NA;NA;408;NA
+korea północna;koreańska republika ludowo-demokratyczna (korea północna);police;NA;NA;NA;408;NA
+kraj nieustalony;koreańskie;NA;NA;zus;NA;999;NA
+kosowo;kosowo;police;border;pesel;udsc;567;NA
+kostaryka;kostaryka;NA;border;pesel;udsc;188;NA
+kostaryka;kostarykańskie;NA;NA;zus;NA;188;NA
+wielka brytania;królestwa wlk.brytanii;NA;NA;zus;NA;826;EU
+kuba;kuba;police;border;pesel;udsc;192;NA
+kuba;kubańskie;NA;NA;zus;NA;192;NA
+kuwejt;kuwejckie;NA;NA;zus;NA;414;NA
+kuwejt;kuwejt;police;NA;pesel;udsc;414;NA
+sri lanka;lankijskie;NA;NA;zus;NA;144;NA
+laos;laos;NA;NA;pesel;NA;418;NA
+laos;laotańskie;NA;NA;zus;NA;418;NA
+lesotho;lesotho;NA;NA;pesel;NA;426;NA
+liban;liban;police;border;pesel;udsc;422;NA
+liban;libańskie;NA;NA;zus;NA;422;NA
+liberia;liberia;police;border;pesel;udsc;430;NA
+liberia;liberyjskie;NA;NA;zus;NA;430;NA
+libia;libia;police;border;pesel;udsc;434;NA
+libia;libijskie;NA;NA;zus;NA;434;NA
+liechtenstein;liechtenstein;NA;NA;pesel;NA;438;NA
+litwa;litewskie;NA;NA;zus;NA;440;EU
+litwa;litwa;police;NA;pesel;NA;440;EU
+łotwa;łotewskie;NA;NA;zus;NA;428;EU
+łotwa;łotwa;police;NA;pesel;NA;428;EU
+luksemburg;luksemburg;police;NA;pesel;udsc;442;EU
+luksemburg;luksemburskie;NA;NA;zus;NA;442;EU
+macedonia;macedonia;police;border;pesel;NA;807;NA
+macedonia;macedońskie;NA;NA;zus;NA;807;NA
+madagaskar;madagaskar;NA;border;pesel;udsc;450;NA
+madagaskar;madagaskarskie;NA;NA;zus;NA;450;NA
+malawi;malawi;police;NA;pesel;NA;454;NA
+malezja;malezja;NA;border;pesel;udsc;458;NA
+malezja;malezyjskie;NA;NA;zus;NA;458;NA
+mali;mali;police;border;pesel;udsc;466;NA
+mali;malijskie;NA;NA;zus;NA;466;NA
+malta;malta;police;NA;pesel;NA;470;EU
+malta;maltańskie;NA;NA;zus;NA;470;EU
+maroko;marokańskie;NA;NA;zus;NA;504;NA
+maroko;maroko;police;border;pesel;udsc;504;NA
+mauretania;mauretania;NA;NA;pesel;NA;478;NA
+mauretania;mauretańskie;NA;NA;zus;NA;478;NA
+mauritius;mauritius;police;border;pesel;udsc;480;NA
+mauritius;maurytyjskie;NA;NA;zus;NA;480;NA
+meksyk;meksyk;police;border;pesel;udsc;484;NA
+meksyk;meksykańskie;NA;NA;zus;NA;484;NA
+mjanma (birma);mjanma;NA;NA;pesel;NA;104;NA
+mołdawia;mołdawia;police;border;pesel;NA;498;NA
+mołdawia;mołdawskie;NA;NA;zus;NA;498;NA
+monako;monakijskie;NA;NA;zus;NA;492;NA
+monako;monako;NA;NA;pesel;NA;492;NA
+mongolia;mongolia;police;border;pesel;udsc;496;NA
+mongolia;mongolskie;NA;NA;zus;NA;496;NA
+mozambik;mozambijskie;NA;NA;zus;NA;508;NA
+mozambik;mozambik;police;border;pesel;udsc;508;NA
+namibia;namibia;NA;NA;pesel;NA;516;NA
+namibia;namibijskie;NA;NA;zus;NA;516;NA
+nepal;nepal;police;border;pesel;udsc;524;NA
+nepal;nepalskie;NA;NA;zus;NA;524;NA
+niemcy;niemcy;police;NA;pesel;NA;276;EU
+niemcy;niemieckie;NA;NA;zus;NA;276;EU
+kraj nieustalony;nieustalone;NA;border;pesel;NA;999;NA
+niger;niger;police;border;pesel;udsc;562;NA
+nigeria;nigeria;police;border;pesel;udsc;566;NA
+niger;nigerskie;NA;NA;zus;NA;562;NA
+nigeria;nigeryjskie;NA;NA;zus;NA;566;NA
+nikaragua;nikaragua;NA;border;pesel;udsc;558;NA
+nikaragua;nikaraguańskie;NA;NA;zus;NA;558;NA
+norwegia;norwegia;police;NA;pesel;NA;578;NA
+norwegia;norweskie;NA;NA;zus;NA;578;NA
+nowa zelandia;nowa zelandia;police;border;pesel;udsc;554;NA
+nowa zelandia;nowozelandzkie;NA;NA;zus;NA;554;NA
+niemcy;nrd;NA;NA;pesel;NA;276;EU
+oman;oman;police;NA;pesel;udsc;512;NA
+pakistan;pakistan;police;border;pesel;udsc;586;NA
+pakistan;pakistańskie;NA;NA;zus;NA;586;NA
+palau;palau;NA;NA;pesel;NA;585;NA
+palestyna;palestyna;police;border;pesel;udsc;275;NA
+palestyna;palestyńskie;NA;NA;zus;NA;275;NA
+panama;panama;NA;border;pesel;udsc;591;NA
+panama;panamskie;NA;NA;zus;NA;591;NA
+papua-nowa gwinea;papua-nowa gwinea;NA;NA;pesel;NA;598;NA
+papua-nowa gwinea;papuańskie;NA;NA;zus;NA;598;NA
+paragwaj;paragwaj;NA;NA;pesel;udsc;600;NA
+paragwaj;paragwajskie;NA;NA;zus;NA;600;NA
+peru;peru;police;border;pesel;udsc;604;NA
+peru;peruwiańskie;NA;NA;zus;NA;604;NA
+korea północna;północno koreańskie;NA;NA;zus;NA;408;NA
+republika południowej afryki;południowoafrykańskie;NA;NA;zus;NA;710;NA
+portugalia;portugalia;police;NA;pesel;NA;620;EU
+portugalia;portugalskie;NA;NA;zus;NA;620;EU
+inne kraje;pozostałe;NA;NA;zus;NA;998;NA
+republika południowej afryki;rep.płd.afryki;NA;NA;zus;NA;710;NA
+republika południowej afryki;republika południowej afryki;NA;NA;pesel;udsc;710;NA
+republika środkowoafrykańska;republika środkowoafrykańska;police;NA;pesel;udsc;140;NA
+republika zielonego przylądka;republika ziel.przylądka;NA;NA;zus;NA;132;NA
+republika zielonego przylądka;republika zielonego przylądka;NA;NA;pesel;NA;132;NA
+rosja;rosja;police;border;pesel;udsc;643;NA
+rosja;rosyjskie;NA;NA;zus;NA;643;NA
+republika południowej afryki;rpa;NA;border;NA;NA;710;NA
+republika południowej afryki;rpa (republika południowej afryki);police;NA;NA;NA;710;NA
+rumunia;rumunia;police;border;pesel;NA;642;EU
+rumunia;rumuńskie;NA;NA;zus;NA;642;EU
+ruanda;rwanda;NA;border;pesel;udsc;646;NA
+ruanda;rwandyjskie;NA;NA;zus;NA;646;NA
+saint christopher i nevis;saint kitts i nevis;NA;NA;pesel;NA;659;NA
+saint lucia;saint lucia;NA;NA;pesel;NA;662;NA
+salwador;salwador;NA;border;pesel;udsc;222;NA
+salwador;salwadorskie;NA;NA;zus;NA;222;NA
+samoa amerykańskie;samoa amerykańskie;NA;NA;zus;NA;16;NA
+arabia saudyjska;saudyjskie;NA;NA;zus;NA;682;NA
+senegal;senegal;police;border;pesel;udsc;686;NA
+senegal;senegalskie;NA;NA;zus;NA;686;NA
+serbia;serbia;police;border;pesel;udsc;688;NA
+serbia;serbia i czarnogóra;NA;NA;pesel;NA;688;NA
+serbia;serbsko-czarnogórskie;NA;NA;zus;NA;688;NA
+seszele;seszele;NA;NA;pesel;NA;690;NA
+sierra leone;sierra leone;NA;border;pesel;udsc;694;NA
+sierra leone;sierraleońskie;NA;NA;zus;NA;694;NA
+singapur;singapur;police;NA;pesel;udsc;702;NA
+singapur;singapurskie;NA;NA;zus;NA;702;NA
+słowacja;słowacja;police;NA;pesel;NA;703;EU
+słowacja;słowackie;NA;NA;zus;NA;703;EU
+słowenia;słowenia;police;NA;pesel;NA;705;EU
+słowenia;słoweńskie;NA;NA;zus;NA;705;EU
+somalia;somalia;police;border;pesel;udsc;706;NA
+somalia;somalijskie;NA;NA;zus;NA;706;NA
+sri lanka;sri lanka;NA;border;pesel;udsc;144;NA
+sri lanka;sri lanka (cejlon);police;NA;NA;NA;144;NA
+republika środkowoafrykańska;środkowoafrykańskie;NA;NA;zus;NA;140;NA
+stany zjednoczone;stany zjednoczone;NA;NA;pesel;NA;840;NA
+stany zjednoczone;stany zjednoczone ameryki;NA;border;NA;NA;840;NA
+sudan;sudan;police;border;pesel;udsc;729;NA
+sudan południowy;sudan południowy;NA;NA;pesel;NA;728;NA
+sudan;sudańskie;NA;NA;zus;NA;729;NA
+surinam;surinam;NA;NA;pesel;NA;740;NA
+surinam;surinamskie;NA;NA;zus;NA;740;NA
+syria;syria;police;border;pesel;udsc;760;NA
+syria;syryjskie;NA;NA;zus;NA;760;NA
+szwajcaria;szwajcaria;police;NA;pesel;NA;756;NA
+szwajcaria;szwajcarskie;NA;NA;zus;NA;756;NA
+szwecja;szwecja;police;NA;pesel;NA;752;EU
+szwecja;szwedzkie;NA;NA;zus;NA;752;EU
+tadżykistan;tadżyckie;NA;NA;zus;NA;762;NA
+tadżykistan;tadżykistan;police;border;pesel;udsc;762;NA
+tajlandia;tajlandia;NA;border;pesel;udsc;764;NA
+tajlandia;tajlandzkie;NA;NA;zus;NA;764;NA
+tajwan;tajwan;police;border;pesel;udsc;158;NA
+tajwan;tajwańskie;NA;NA;zus;NA;158;NA
+tanzania;tanzania;police;border;pesel;udsc;834;NA
+tanzania;tanzańskie;NA;NA;zus;NA;834;NA
+timor wschodni;timor wschodni;NA;NA;pesel;NA;626;NA
+togo;togijskie;NA;NA;zus;NA;768;NA
+togo;togo;police;border;pesel;NA;768;NA
+tonga;tonga;NA;NA;pesel;NA;776;NA
+trynidad i tobago;trynidad i tobago;NA;NA;pesel;NA;780;NA
+trynidad i tobago;trynidadzko-tobagijskie;NA;NA;zus;NA;780;NA
+tunezja;tunezja;police;border;pesel;udsc;788;NA
+tunezja;tunezyjskie;NA;NA;zus;NA;788;NA
+turcja;turcja;police;border;pesel;udsc;792;NA
+turcja;tureckie;NA;NA;zus;NA;792;NA
+turkmenistan;turkmenistan;NA;border;pesel;udsc;795;NA
+turkmenistan;turkmenistan (turkmenia);police;NA;NA;NA;795;NA
+turkmenistan;turkmeńskie;NA;NA;zus;NA;795;NA
+uganda;uganda;police;border;pesel;udsc;800;NA
+uganda;ugandyjskie;NA;NA;zus;NA;800;NA
+ukraina;ukraina;police;border;pesel;udsc;804;NA
+ukraina;ukraińskie;NA;NA;zus;NA;804;NA
+urugwaj;urugwaj;NA;border;pesel;udsc;858;NA
+urugwaj;urugwajskie;NA;NA;zus;NA;858;NA
+stany zjednoczone;usa (stany zjednoczone ameryki);police;NA;NA;NA;840;NA
+uzbekistan;uzbeckie;NA;NA;zus;NA;860;NA
+uzbekistan;uzbekistan;police;border;pesel;udsc;860;NA
+vanuatu;vanuatu;police;NA;NA;NA;548;NA
+korea południowa;w tym****):  południowo koreańskie;NA;NA;zus;NA;410;NA
+watykan;watykan;police;NA;pesel;NA;336;NA
+watykan;watykańskie;NA;NA;zus;NA;336;NA
+węgry;węgierskie;NA;NA;zus;NA;348;EU
+węgry;węgry;police;NA;pesel;NA;348;EU
+wenezuela;wenezuela;police;border;pesel;udsc;862;NA
+wenezuela;wenezuelskie;NA;NA;zus;NA;862;NA
+wielka brytania;wielka brytania;police;NA;pesel;NA;826;EU
+wietnam;wietnam;police;border;pesel;udsc;704;NA
+wietnam;wietnamskie;NA;NA;zus;NA;704;NA
+włochy;włochy;police;NA;pesel;NA;380;EU
+włochy;włoskie;NA;NA;zus;NA;380;EU
+wybrzeże kości słoniowej;wybrzeże kości słoniowej;police;border;pesel;udsc;384;NA
+wybrzeże kości słoniowej;wybrzeże kości słoniowej;NA;NA;zus;udsc;384;NA
+wyspy świętego tomasza i książęca;wyspy św.tomasza i książęca;NA;NA;zus;NA;678;NA
+wyspy świętego tomasza i książęca;wyspy świętego tomasza i książęca;NA;NA;pesel;NA;678;NA
+demokratyczna republika konga;zairskie;NA;NA;zus;NA;180;NA
+zambia;zambia;NA;border;pesel;udsc;894;NA
+zambia;zambijskie;NA;NA;zus;NA;894;NA
+zimbabwe;zimbabwe;NA;border;pesel;udsc;716;NA
+zimbabwe;zimbabwe;NA;NA;zus;udsc;716;NA
+zimbabwe;zimbabwe (rodezja);police;NA;NA;NA;716;NA
+zjednoczone emiraty arabskie;zjednoczone emiraty arabskie;police;NA;pesel;udsc;784;NA
+kraj nieustalony;zsrr;police;NA;pesel;NA;999;NA
+macedonia;b. j. republika macedonii;NA;NA;NA;udsc;807;NA
+kraj nieustalony;bez obywatelstwa;NA;NA;NA;udsc;999;NA
+burkina faso;burkina faso (d. górna wolta);NA;NA;NA;udsc;854;NA
+mołdawia;mołdowa;NA;NA;NA;udsc;498;NA
+kraj nieustalony;nieokreślony;NA;NA;NA;udsc;999;NA
+stany zjednoczone;stany zjednoczone ameryki;NA;NA;NA;udsc;840;NA
+wyspy marshalla;wyspy marshalla;NA;NA;NA;udsc;584;NA

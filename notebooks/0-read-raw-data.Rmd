@@ -261,18 +261,19 @@ saveRDS(countries_all, file = "../data/data-for-model.rds")
 
 ```{r}
 countries_all %>%
-  group_by(country, country_iso3n, half, age, sex = factor(sex)) %>%
+  filter(pesel >0 )
+  group_by(country, country_iso3n, half) %>%
   summarise_at(vars(pesel:police_all), sum) %>%
   mutate(country = ifelse(border > 0 & police_all > 0 & police_all / pesel < 1, country, "other")) %>%
-  group_by(country, half, age, sex) %>%
+  group_by(country, half) %>%
   summarise_at(vars(pesel:police_all), sum) -> m
 ```
 
 
 ```{r}
 ggplot(data = m, aes(x = log(police_all/pesel), y = log(border/pesel), size = sqrt(pesel))) + 
-  geom_point() + geom_smooth(method = "lm") + facet_wrap(half~sex)
+  geom_point() + geom_smooth(method = "lm") + facet_wrap(~half)
 ggplot(data = m, aes(x = log(pesel),y = log(border/pesel), size = sqrt(pesel))) + 
-  geom_point() + geom_smooth(method = "lm") + facet_wrap(half~sex)
+  geom_point() + geom_smooth(method = "lm") + facet_wrap(~half)
 ```
 

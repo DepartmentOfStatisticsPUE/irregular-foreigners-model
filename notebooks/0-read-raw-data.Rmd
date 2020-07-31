@@ -11,6 +11,8 @@ library(tidyverse)
 library(readxl)
 library(xtable)
 library(countrycode)
+library(extraDistr)
+library(VGAM)
 ```
 
 Apprehensions for 2019
@@ -30,6 +32,7 @@ excel_sheets(excel_file) %>%
            summarise_at(vars(women_0_17:men_65), sum, na.rm = T), .id = "half") %>%
   mutate(year = str_extract(half, "\\d{4}"),
          half = str_extract(half, "I{1,2}")) %>%
+  ungroup() %>%
   filter(year == 2019) -> sg
 ```
 
@@ -46,41 +49,37 @@ sg %>%
 ```
 
 ```{r}
-sg %>%
-  ungroup()  %>%
-  count(half, appreh, place) %>%
-  filter(place == "kraj")
-```
-
-```{r}
 saveRDS(object = sg, file = "../data/data-border-guards.rds")
 ```
 
 Police data for 2019
 
 ```{r}
-map_df(1:4, ~ read_excel(path = "~/git/zbiory/cudzoziemcy/Policja/Osoba-cudzoziemcy-rok 2019.xls",  
+map_df(1:4, 
+       ~ read_excel(path = "~/git/zbiory/cudzoziemcy/Policja/Osoba-cudzoziemcy-rok 2019.xls",  
                          sheet = .x, 
-                         skip = 2, .name_repair = janitor::make_clean_names) %>%
-  fill(id_ksip_oio, wiek, plec, obywatelstwo, data_wprowadzenia_rok, data_wprowadzenia_kwartal),
+                         skip = 3, 
+                    col_names = c("id","age","sex","pesel","country","year","quarter","address_type")) %>%
+  fill(id, age, sex, country, year, quarter),
   #mutate(pesel_tak_nie = ifelse(is.na(pesel_tak_nie), "NIE", pesel_tak_nie)),
   .id = 'sheet') %>%
   mutate(sheet = case_when(sheet == 1 ~ "process",
                            sheet == 2 ~ "criminal",
                            sheet == 3 ~ "searching",
-                           sheet == 4  ~ "traffic")) %>%
-  group_by(sheet, id_ksip_oio) %>%
-  fill(pesel_tak_nie)  %>%
+                           sheet == 4  ~ "traffic"),
+         age  = age - 1) %>%
+  group_by(sheet, id) %>%
+  fill(pesel)  %>%
   ungroup() -> police
 
 police %>%
-  mutate(half = ifelse(data_wprowadzenia_kwartal %in% 1:2, "I", "II")) %>%
-  distinct(sheet, id_ksip_oio, pesel_tak_nie, half) %>%
-  mutate(pesel_tak_nie = replace_na(pesel_tak_nie, "NIE"), 
-         PESEL= factor(pesel_tak_nie, c("TAK", "NIE"), c("Yes", "No"), ordered = T)) %>%
-  count(year = as.character(2019), half, PESEL, type = sheet) %>%
+  mutate(half = ifelse(quarter %in% 1:2, "I", "II")) %>%
+  distinct(sheet, id, pesel, half) %>%
+  mutate(pesel = replace_na(pesel, "NIE"), 
+         pesel= factor(pesel, c("TAK", "NIE"), c("Yes", "No"), ordered = T)) %>%
+  count(year = as.character(2019), half, pesel, type = sheet) %>%
   spread(type, n, fill = 0) %>%
-  select(year:PESEL, process, searching, traffic, criminal) %>%
+  select(year:pesel, process, searching, traffic, criminal) %>%
   xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
   print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
 ```
@@ -120,7 +119,8 @@ map_df(1:4, ~ read_excel(path ="~/git/zbiory/cudzoziemcy/PESEL/cudzoziemcy-pesel
 pesel %>%
   count(as_of = stan_na, status_zameldowania, wt = liczba_cudzoziemcow) %>%
   mutate(status_zameldowania = factor(status_zameldowania, 1:6, 
-                                      c("No address in Poland", "Temporal", "Permanent", "Deregistered", "Out-of-date temporal", "Outside Poland"))) %>%
+                                      c("No address in Poland", "Temporal", "Permanent", 
+                                        "Deregistered", "Out-of-date temporal", "Outside Poland"))) %>%
   spread(status_zameldowania, n) %>%
   xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
   print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
@@ -171,16 +171,15 @@ sg %>%
 
 ```{r}
 police %>%
-  filter(wiek >= 18, sheet != "searching") %>%
-  mutate(sex = ifelse(plec == "Mężczyzna", 2, 1),
-         age = case_when(sex == 1 & wiek >= 60 ~ 2,
-                         sex == 2 & wiek >= 65 ~ 2,
+  filter(age >= 18, sheet != "searching", sex != "Nieznana") %>%
+  mutate(sex = ifelse(sex == "Mężczyzna", 2, 1),
+         age = case_when(sex == 1 & age >= 60 ~ 2,
+                         sex == 2 & age >= 65 ~ 2,
                          TRUE ~ 1),
-         half = ifelse(data_wprowadzenia_kwartal %in% 1:2, "I", "II"),
-         registered = !is.na(pesel_tak_nie),
-         country_name = tolower(obywatelstwo)) %>%
-  arrange(id_ksip_oio) %>%
-  distinct(id_ksip_oio, sex, age, registered, country_name, half) %>%
+         half = ifelse(quarter %in% 1:2, "I", "II"),
+         registered = !is.na(pesel),
+         country_name = tolower(country)) %>%
+  distinct(id, sex, age, registered, country_name, half) %>%
   count(sex, age, registered, country_name, half) %>%
   spread(registered, n, fill = 0) %>%
   rename(police_nonreg = `FALSE`, police_reg = `TRUE`) %>%
@@ -209,36 +208,48 @@ police %>%
     country_name == "kambodża (kampucza)" ~ "116",
     TRUE ~ country_iso3n
   ))   -> police_prepared
-
-
 ```
 
 ```{r}
 # different codding
-pesel %>%
-  filter(wiek != 1, status_zameldowania %in% 2:3) %>%
-  mutate(half = case_when(stan_na == "2019.03.31" ~ "I",
-                          stan_na == "2019.06.30" ~ "Ia",
-                          stan_na == "2019.09.30" ~ "II",
-                          stan_na == "2019.12.31" ~ "IIa"),
-         country_name = tolower(nazwa_kraju_obywatelstwa),
-         age = ifelse(wiek %in% 2:3, 1, 2)) %>%
-  count(half, country_name, age, sex=plec, wt = liczba_cudzoziemcow, name = "pesel") %>%
+pesel_aggr %>%
+  filter(age != 1) %>%
+  mutate(half = case_when(quarter == "2019.03.31" ~ "I",
+                          quarter == "2019.06.30" ~ "Ia",
+                          quarter == "2019.09.30" ~ "II",
+                          quarter == "2019.12.31" ~ "IIa"),
+         country_name = tolower(country),
+         age = ifelse(age %in% 2:3, 1, 2)) %>%
+  count(half, country_name, age, sex, wt = n, name = "pesel") %>%
   left_join(dict_full %>% filter(source3 == "pesel") %>% select(country_name=country, country_iso3n=iso3n)) %>%
   mutate(country_iso3n = case_when(country_name == "malediwy" ~ "462",
                                    country_name == "saint vincent i grenadyny" ~ "670",
                                    country_name == "suazi" ~ "748",
                                    country_name == "vanuatu" ~ "548",
-                                   TRUE ~country_iso3n )) -> pesel_prepared
+                                   TRUE ~ country_iso3n )) -> pesel_prepared
+
+pesel_prepared
 ```
+
 
 ```{r}
 pesel_prepared %>%
   filter(half %in% c("I", "II")) %>%
-  full_join(sg_prepared %>% rename(country_name_sg = country_name)) %>%
-  full_join(police_prepared %>% rename(country_name_police = country_name)) %>% 
-  select(half, age, sex, country_iso3n, 
-         country_name_pesel = country_name, country_name_sg, country_name_police, pesel, border, matches("police")) %>%
+  mutate(country_iso3n = ifelse(country_iso3n == "998", "999", country_iso3n)) %>%
+  count(half, country_iso3n, age, sex, wt = pesel, name = "pesel") %>%
+  full_join(
+    sg_prepared %>% 
+      mutate(country_iso3n = ifelse(country_iso3n == "998", "999", country_iso3n)) %>%
+      count(half, country_iso3n, age, sex, wt = border, name = "border")
+    ) %>%
+  full_join(
+    police_prepared %>% 
+      mutate(country_iso3n = ifelse(country_iso3n == "998", "999", country_iso3n)) %>%
+      group_by(half,  country_iso3n, age, sex) %>%
+      summarise_at(vars(police_nonreg:police_all), sum) %>%
+      ungroup()
+    ) %>% 
+  select(half, age, sex, country_iso3n, pesel, border, matches("police")) %>%
   mutate(eu = countrycode(country_iso3n, "genc3n", "eu28"),
          country = countrycode(country_iso3n, "genc3n", "un.name.en"),
          country = case_when(country_iso3n == "999" ~ "other",
@@ -252,7 +263,10 @@ pesel_prepared %>%
   mutate_at(vars(pesel:police_all), replace_na, 0)  %>%
   filter(is.na(eu)) %>%
   arrange(country, country_iso3n, half, age, sex, pesel, border, police_nonreg, police_reg, police_all) %>%
-  select(country, country_iso3n, half, age, sex, pesel, border, police_nonreg, police_reg, police_all) -> countries_all
+  select(country, country_iso3n, half, age, sex, pesel, border, police_nonreg, police_reg, police_all) %>%
+  filter(pesel >0, !country %in% c("Switzerland", "Norway", "United States of America", NA)) -> countries_all
+
+countries_all 
 ```
 
 ```{r}
@@ -261,19 +275,44 @@ saveRDS(countries_all, file = "../data/data-for-model.rds")
 
 ```{r}
 countries_all %>%
-  filter(pesel >0 )
-  group_by(country, country_iso3n, half) %>%
+  group_by(country, country_iso3n, half, sex) %>%
   summarise_at(vars(pesel:police_all), sum) %>%
   mutate(country = ifelse(border > 0 & police_all > 0 & police_all / pesel < 1, country, "other")) %>%
-  group_by(country, half) %>%
-  summarise_at(vars(pesel:police_all), sum) -> m
+  group_by(country, half, sex) %>%
+  summarise_at(vars(pesel:police_all), sum) %>%
+  ungroup() %>%
+  mutate(log_police_pesel = log(police_all/pesel),
+         log_border_pesel = log(border/pesel),
+         log_pesel = log(pesel)) -> m
+
+m 
 ```
 
 
 ```{r}
-ggplot(data = m, aes(x = log(police_all/pesel), y = log(border/pesel), size = sqrt(pesel))) + 
-  geom_point() + geom_smooth(method = "lm") + facet_wrap(~half)
-ggplot(data = m, aes(x = log(pesel),y = log(border/pesel), size = sqrt(pesel))) + 
-  geom_point() + geom_smooth(method = "lm") + facet_wrap(~half)
+m %>%
+#  filter(country != "Ukraine") %>%
+ggplot(data = ., 
+       aes(x = log_police_pesel, y =log_border_pesel, size = sqrt(pesel))) + 
+  geom_point(shape = 1) + geom_smooth(method = "lm", se = F) + facet_wrap(~half) + 
+   ggpubr::stat_cor(method = "pearson")
+
+m %>%
+ # filter(country != "Ukraine") %>%
+ggplot(data = ., 
+       aes(x = log_pesel,y = log_border_pesel, size = sqrt(pesel))) + 
+  geom_point(shape = 1) + geom_smooth(method = "lm", se = F) + facet_wrap(~half) + 
+   ggpubr::stat_cor(method = "pearson")
 ```
+
+```{r}
+m  %>%
+  group_by(half) %>%
+  do(m = broom::tidy(lm(log_border_pesel ~ -1 + log_pesel + log_police_pesel, data = .)),
+     inf = broom::glance(lm(log_border_pesel ~ -1 + log_pesel + log_police_pesel, data = .))) %>%
+  unnest(inf) %>%
+  unnest(m, names_repair = "universal")  %>%
+  dplyr::select(half, estimate, std.error, adj.r.squared)
+```
+
 

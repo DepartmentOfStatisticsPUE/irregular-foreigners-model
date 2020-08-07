@@ -1,5 +1,6 @@
 ---
-title: "R Notebook"
+title: "1. Read raw data from desktop and save for the project"
+author: "Maciej Beręsewicz"
 output: html_notebook
 ---
 
@@ -46,10 +47,6 @@ sg %>%
   print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
 ```
 
-```{r}
-saveRDS(object = sg, file = "../data/data-border-guards.rds")
-```
-
 Police data for 2019
 
 ```{r}
@@ -81,27 +78,6 @@ police %>%
   xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
   print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
 ```
-
-```{r}
-saveRDS(object = police, file = "../data/data-police.rds")
-```
-
-UDSC 2019
-
-```{r}
-udsc2019 <- read_excel("~/git/zbiory/cudzoziemcy/UdSC/2019-roczny.xlsx", sheet = "POB.CZASOWY-DECYZJE",
-                        range = cell_cols(1:7), col_names = F) %>%
-  slice(6:156) %>%
-  select(country = 1, `1` = 5, `2` = 6) %>%
-  mutate(`1` = as.numeric(`1`), `2` = as.numeric(`2`),
-         country = tolower(country)) %>%
-  gather(sex, udsc, -country) %>%
-  mutate(sex = as.numeric(sex))
-```
-
-
-
-
 
 PESEL data for 2019
 
@@ -149,9 +125,6 @@ pesel %>%
         sex = plec, age = wiek, wt = liczba_cudzoziemcow) -> pesel_aggr
 ```
 
-```{r}
-saveRDS(object = pesel_aggr, file = "../data/data-pesel.rds")
-```
 
 Joining the data
 
@@ -182,6 +155,10 @@ sg %>%
          country_iso3n = replace_na(country_iso3n, "999")) %>%
   ungroup() %>%
   select(half,sex, age, country_name, country_iso3n, country_iso, border) -> sg_prepared
+```
+
+```{r}
+saveRDS(object = sg_prepared, file = "../data/data-border-guards.rds")
 ```
 
 ```{r}
@@ -227,10 +204,9 @@ police %>%
 ```
 
 ```{r}
-udsc2019 %>%
-  left_join(dict_full %>% distinct(country  = name, country_iso3n=iso3n)) %>%
-  filter(udsc > 0) -> udsc_prepared
+saveRDS(object = police_prepared, file = "../data/data-police.rds")
 ```
+
 
 ```{r}
 # different codding
@@ -253,6 +229,9 @@ pesel_aggr %>%
 pesel_prepared
 ```
 
+```{r}
+saveRDS(object = pesel_prepared, file = "../data/data-pesel.rds")
+```
 
 ```{r}
 pesel_prepared %>%
@@ -270,13 +249,13 @@ pesel_prepared %>%
       group_by(half,  country_iso3n, age, sex) %>%
       summarise_at(vars(police_nonreg:police_all), sum) %>%
       ungroup()
-    ) %>% 
-  full_join(
-    udsc_prepared %>% select(-country)
-  ) %>%
-  select(half, age, sex, country_iso3n, pesel, border, udsc, matches("police")) %>%
+    )  %>%
+  select(half, age, sex, country_iso3n, pesel, border, matches("police")) %>%
   mutate(eu = countrycode(country_iso3n, "genc3n", "eu28"),
+         country_short = countrycode(country_iso3n, "genc3n", "iso3c"),
+         country_continent = countrycode(country_iso3n, "genc3n", "continent"),
          country = countrycode(country_iso3n, "genc3n", "un.name.en"),
+         country_efta = country %in% c("Iceland", "Norway", "Liechtenstein", "Switzerland"),
          country = case_when(country_iso3n == "999" ~ "other",
                              country_iso3n == "998" ~ "other",
                              country_iso3n == "567" ~ "Kosovo",
@@ -284,61 +263,26 @@ pesel_prepared %>%
                              country_iso3n == "158" ~ "Taiwan",
                              country_iso3n == "336" ~ "Vatican city",
                              country_iso3n == "016" ~ "American Samoa",
-                             TRUE ~ country)) %>%
+                             TRUE ~ country),
+         country_continent = case_when(country == "Kosovo" ~ "Europe",
+                                       country == "Palestine" ~ "Asia",
+                                       country == "other" ~ "Rest",
+                                       TRUE ~ country_continent),
+         country_short = ifelse(is.na(country_short), "UNK", country_short)) %>%
   mutate_at(vars(pesel:police_all), replace_na, 0)  %>%
-  filter(is.na(eu)) %>%
-  arrange(country, country_iso3n, half, age, sex, udsc, pesel, border, police_nonreg, police_reg, police_all) %>%
-  select(country, country_iso3n, half, age, sex, udsc,pesel, border, police_nonreg, police_reg, police_all) %>%
-  filter(pesel >0, !country %in% c("Switzerland", "Norway", "United States of America", NA)) -> countries_all
+  filter(!is.na(country)) %>%
+  arrange(country, country_iso3n, country_short,country_continent, country_efta, eu, 
+          half, age, sex, pesel, border, police_nonreg, police_reg, police_all) %>%
+  select(country, country_iso3n, country_short, country_continent, country_efta, eu, 
+         half, age, sex, pesel, border, police_nonreg, police_reg, police_all)  -> countries_all
 
-countries_all 
+countries_all  
 ```
 
 ```{r}
 saveRDS(countries_all, file = "../data/data-for-model.rds")
 ```
 
-```{r}
-countries_all %>%
-  group_by(country, country_iso3n, half, sex) %>%
-  summarise_at(vars(udsc,pesel:police_all), sum) %>%
-  mutate(udsc = udsc / 2, 
-         country = ifelse(border > 0 & udsc > 0 & udsc / pesel < 1, country, "other")) %>%
-  group_by(country, half, sex) %>%
-  summarise_at(vars(udsc,pesel:police_all), sum) %>%
-  ungroup() %>%
-  mutate(border = ifelse(border == 0 & country == "other", 1, border), 
-         log_police_pesel = log(udsc/pesel),
-         log_border_pesel = log(border/pesel),
-         log_pesel = log(pesel)) -> m
 
-m 
-```
-
-
-```{r}
-m %>%
-#  filter(country != "Ukraine") %>%
-ggplot(data = ., 
-       aes(x = log_police_pesel, y =log_border_pesel, size = sqrt(pesel))) + 
-  geom_point(shape = 1) + geom_smooth(method = MASS::rlm, se = F) + facet_grid(~half) + 
-  ggpubr::stat_cor(method = "pearson")
-
-m %>%
-ggplot(data = ., 
-       aes(x = log_pesel,y = log_border_pesel, size = sqrt(pesel), color = factor(sex))) + 
-  geom_point(shape = 1) + geom_smooth(method =  MASS::rlm, se = F) + facet_grid(~half) + 
-   ggpubr::stat_cor(method = "spearman")
-```
-
-```{r}
-m  %>%
-  group_by(half) %>%
-  do(m = broom::tidy(lm(log_border_pesel ~ -1 + log_pesel + log_police_pesel, data = .)),
-     inf = broom::glance(lm(log_border_pesel ~ -1 + log_pesel + log_police_pesel, data = .))) %>%
-  unnest(inf) %>%
-  unnest(m, names_repair = "universal")  %>%
-  dplyr::select(half, estimate, std.error, adj.r.squared)
-```
 
 

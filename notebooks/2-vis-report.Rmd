@@ -1,0 +1,26 @@
+---
+title: "2. Visualisation and reporting for the paper"
+author: "Maciej Beręsewicz"
+output: html_notebook
+---
+
+# Load packages
+
+```{r}
+library(tidyverse)
+library(xtable)
+```
+
+# Read the data
+
+Read the data for the project
+
+```{r}
+countries_all <- readRDS(file = "../data/data-for-model.rds")
+```
+
+
+```{r}
+countries_all
+```
+

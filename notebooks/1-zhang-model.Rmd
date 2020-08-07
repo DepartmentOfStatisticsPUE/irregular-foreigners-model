@@ -70,7 +70,7 @@ dt2019_1 <- m %>% filter(half == "I") %>%
 
 
 ```{r}
-m0 <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = dt2019_1, subset = sex == 2)
+m0 <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = dt2019_1)
 summary(m0)
 plot(m0)
 ```
@@ -86,9 +86,9 @@ summary(wynik)
 AIC(wynik)
 confint(wynik, level = 0.95)
 
-sum(dt2019_1$N^0.6136478)
+sum(dt2019_1$N^0.6139188)
 sum(dt2019_1$N^coef(wynik)[1])
-sum(dt2019_1$N^0.7298152)
+sum(dt2019_1$N^0.7165990)
 ```
 
 ```{r}
@@ -301,7 +301,8 @@ wynik_negbin <- maxLik(logLik = negbin_ll,
                                 beta = unname(coef(m_start)[2]), 
                                 phi = 1/sigma(m_start)))
 
-wynik_ztnegbin <- maxLik(logLik = ztnegbin_ll, grad = ztnegbin_ll_grad, hess = ztnegbin_ll_hess,
+wynik_ztnegbin <- maxLik(logLik = ztnegbin_ll, 
+                         grad = ztnegbin_ll_grad, hess = ztnegbin_ll_hess,
                       data = dt2019_1,
                       method = "BFGS",
                       start = c(alpha = unname(coef(m_start)[1] + 1) ,
@@ -316,8 +317,8 @@ AIC(wynik_poisson)
 ```
 
 ```{r}
-list(wynik_lichun,wynik_poisson, wynik_t2poisson, wynik_negbin, wynik_ztnegbin) %>%
-  set_names(c("lichun", "poisson", "t2poisson", "negbin", "ztnegbin")) %>%
+list(wynik_lichun,wynik_poisson, wynik_tpoisson, wynik_t2poisson, wynik_negbin, wynik_ztnegbin) %>%
+  set_names(c("lichun", "poisson", "tpoisson", "t2poisson", "negbin", "ztnegbin")) %>%
   map_df( ~ data.frame(N_lower = sum(dt2019_1$N^coefci(.x)[1,1]),
                        N = sum(dt2019_1$N^coef(.x)[1]),
                        N_upper = sum(dt2019_1$N^coefci(.x)[1,2]),
@@ -326,11 +327,45 @@ list(wynik_lichun,wynik_poisson, wynik_t2poisson, wynik_negbin, wynik_ztnegbin) 
 ```
 
 
+Separate models for sexes
 
 ```{r}
-m_start <- lm(log(m/N) ~ -1 + log(N) + log(n/N) + sex, data = dt2019_1)
-summary(m_start)
-plot(m_start)
+dt2019_1_females <- m %>% filter(half == "I", sex == 2) %>%
+  rename(m = border,
+         N = pesel,
+         n = police_all)
 
-plot(log(dt2019_1$m/dt2019_1$N), fitted(m_start))
+wynik <- maxLik(logLik = ll, 
+                grad = grad, 
+                hess = hess,
+                data = dt2019_1_females, 
+                method = "NR",
+                start = c(alpha = coef(m0)[1]+1, beta = coef(m0)[2], phi = 1/sigma(m0)))
+summary(wynik)
+AIC(wynik)
+confint(wynik, level = 0.95)
+
+sum(dt2019_1$N^0.5992235)
+sum(dt2019_1$N^coef(wynik)[1]) ## 5525.491 + 5142.178
+sum(dt2019_1$N^0.7317360)
 ```
+
+Bootstrap
+
+```{r}
+eta_b <- (dt2019_1$n/dt2019_1$N)^0.58974*dt2019_1$N^0.66560*rgamma(n = nrow(dt2019_1), shape = 1, rate = 1.59143)
+m_b <- rnbinom(n = nrow(dt2019_1), mu = eta, size = 1)+1
+
+df <- data.frame(m = m_b, n = dt2019_1$n, N = dt2019_1$N)
+
+wynik_b <- maxLik(logLik = ll, 
+                  grad = grad, 
+                  hess = hess,
+                  data = df, 
+                  method = "NR",
+                  start = c(alpha = coef(m0)[1]+1, beta = coef(m0)[2], phi = 1/sigma(m0)))
+
+summary(wynik_b)
+
+```
+

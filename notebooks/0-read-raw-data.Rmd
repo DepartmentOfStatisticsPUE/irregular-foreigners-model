@@ -11,8 +11,6 @@ library(tidyverse)
 library(readxl)
 library(xtable)
 library(countrycode)
-library(extraDistr)
-library(VGAM)
 ```
 
 Apprehensions for 2019
@@ -26,7 +24,7 @@ excel_sheets(excel_file) %>%
                                                   "women_0_17", "women_18_59", "women_60",
                                                   "men_0_17", "men_18_64", "men_65", "total"),
                       col_types = c(rep("text", 5), rep("numeric", 7))) %>%
-           fill(appreh, place, woj) %>%
+           tidyr::fill(appreh, place, woj) %>%
            filter(str_detect(appreh, "Suma|RAZEM|zatrzymanie", negate = T)) %>%
            group_by(appreh, place, citizen_iso, citizen_name) %>%
            summarise_at(vars(women_0_17:men_65), sum, na.rm = T), .id = "half") %>%
@@ -60,7 +58,7 @@ map_df(1:4,
                          sheet = .x, 
                          skip = 3, 
                     col_names = c("id","age","sex","pesel","country","year","quarter","address_type")) %>%
-  fill(id, age, sex, country, year, quarter),
+  tidyr::fill(id, age, sex, country, year, quarter),
   #mutate(pesel_tak_nie = ifelse(is.na(pesel_tak_nie), "NIE", pesel_tak_nie)),
   .id = 'sheet') %>%
   mutate(sheet = case_when(sheet == 1 ~ "process",
@@ -69,7 +67,7 @@ map_df(1:4,
                            sheet == 4  ~ "traffic"),
          age  = age - 1) %>%
   group_by(sheet, id) %>%
-  fill(pesel)  %>%
+  tidyr::fill(pesel)  %>%
   ungroup() -> police
 
 police %>%
@@ -87,6 +85,23 @@ police %>%
 ```{r}
 saveRDS(object = police, file = "../data/data-police.rds")
 ```
+
+UDSC 2019
+
+```{r}
+udsc2019 <- read_excel("~/git/zbiory/cudzoziemcy/UdSC/2019-roczny.xlsx", sheet = "POB.CZASOWY-DECYZJE",
+                        range = cell_cols(1:7), col_names = F) %>%
+  slice(6:156) %>%
+  select(country = 1, `1` = 5, `2` = 6) %>%
+  mutate(`1` = as.numeric(`1`), `2` = as.numeric(`2`),
+         country = tolower(country)) %>%
+  gather(sex, udsc, -country) %>%
+  mutate(sex = as.numeric(sex))
+```
+
+
+
+
 
 PESEL data for 2019
 
@@ -129,7 +144,7 @@ pesel %>%
 
 ```{r}
 pesel %>%
-  filter(status_zameldowania %in% 2:3) %>%
+  filter(status_zameldowania %in% c(2:3)) %>%
   count(quarter = stan_na, country = nazwa_kraju_obywatelstwa, country_code = kod_kraju_obywatelstwa, 
         sex = plec, age = wiek, wt = liczba_cudzoziemcow) -> pesel_aggr
 ```
@@ -171,7 +186,7 @@ sg %>%
 
 ```{r}
 police %>%
-  filter(age >= 18, sheet != "searching", sex != "Nieznana") %>%
+  filter(age >= 18, sex != "Nieznana") %>%
   mutate(sex = ifelse(sex == "Mężczyzna", 2, 1),
          age = case_when(sex == 1 & age >= 60 ~ 2,
                          sex == 2 & age >= 65 ~ 2,
@@ -179,7 +194,8 @@ police %>%
          half = ifelse(quarter %in% 1:2, "I", "II"),
          registered = !is.na(pesel),
          country_name = tolower(country)) %>%
-  distinct(id, sex, age, registered, country_name, half) %>%
+  count(id, sex, age, registered, country_name, half) %>%
+  select(-n) %>%
   count(sex, age, registered, country_name, half) %>%
   spread(registered, n, fill = 0) %>%
   rename(police_nonreg = `FALSE`, police_reg = `TRUE`) %>%
@@ -208,6 +224,12 @@ police %>%
     country_name == "kambodża (kampucza)" ~ "116",
     TRUE ~ country_iso3n
   ))   -> police_prepared
+```
+
+```{r}
+udsc2019 %>%
+  left_join(dict_full %>% distinct(country  = name, country_iso3n=iso3n)) %>%
+  filter(udsc > 0) -> udsc_prepared
 ```
 
 ```{r}
@@ -249,7 +271,10 @@ pesel_prepared %>%
       summarise_at(vars(police_nonreg:police_all), sum) %>%
       ungroup()
     ) %>% 
-  select(half, age, sex, country_iso3n, pesel, border, matches("police")) %>%
+  full_join(
+    udsc_prepared %>% select(-country)
+  ) %>%
+  select(half, age, sex, country_iso3n, pesel, border, udsc, matches("police")) %>%
   mutate(eu = countrycode(country_iso3n, "genc3n", "eu28"),
          country = countrycode(country_iso3n, "genc3n", "un.name.en"),
          country = case_when(country_iso3n == "999" ~ "other",
@@ -262,8 +287,8 @@ pesel_prepared %>%
                              TRUE ~ country)) %>%
   mutate_at(vars(pesel:police_all), replace_na, 0)  %>%
   filter(is.na(eu)) %>%
-  arrange(country, country_iso3n, half, age, sex, pesel, border, police_nonreg, police_reg, police_all) %>%
-  select(country, country_iso3n, half, age, sex, pesel, border, police_nonreg, police_reg, police_all) %>%
+  arrange(country, country_iso3n, half, age, sex, udsc, pesel, border, police_nonreg, police_reg, police_all) %>%
+  select(country, country_iso3n, half, age, sex, udsc,pesel, border, police_nonreg, police_reg, police_all) %>%
   filter(pesel >0, !country %in% c("Switzerland", "Norway", "United States of America", NA)) -> countries_all
 
 countries_all 
@@ -276,12 +301,14 @@ saveRDS(countries_all, file = "../data/data-for-model.rds")
 ```{r}
 countries_all %>%
   group_by(country, country_iso3n, half, sex) %>%
-  summarise_at(vars(pesel:police_all), sum) %>%
-  mutate(country = ifelse(border > 0 & police_all > 0 & police_all / pesel < 1, country, "other")) %>%
+  summarise_at(vars(udsc,pesel:police_all), sum) %>%
+  mutate(udsc = udsc / 2, 
+         country = ifelse(border > 0 & udsc > 0 & udsc / pesel < 1, country, "other")) %>%
   group_by(country, half, sex) %>%
-  summarise_at(vars(pesel:police_all), sum) %>%
+  summarise_at(vars(udsc,pesel:police_all), sum) %>%
   ungroup() %>%
-  mutate(log_police_pesel = log(police_all/pesel),
+  mutate(border = ifelse(border == 0 & country == "other", 1, border), 
+         log_police_pesel = log(udsc/pesel),
          log_border_pesel = log(border/pesel),
          log_pesel = log(pesel)) -> m
 
@@ -294,15 +321,14 @@ m %>%
 #  filter(country != "Ukraine") %>%
 ggplot(data = ., 
        aes(x = log_police_pesel, y =log_border_pesel, size = sqrt(pesel))) + 
-  geom_point(shape = 1) + geom_smooth(method = "lm", se = F) + facet_wrap(~half) + 
-   ggpubr::stat_cor(method = "pearson")
+  geom_point(shape = 1) + geom_smooth(method = MASS::rlm, se = F) + facet_grid(~half) + 
+  ggpubr::stat_cor(method = "pearson")
 
 m %>%
- # filter(country != "Ukraine") %>%
 ggplot(data = ., 
-       aes(x = log_pesel,y = log_border_pesel, size = sqrt(pesel))) + 
-  geom_point(shape = 1) + geom_smooth(method = "lm", se = F) + facet_wrap(~half) + 
-   ggpubr::stat_cor(method = "pearson")
+       aes(x = log_pesel,y = log_border_pesel, size = sqrt(pesel), color = factor(sex))) + 
+  geom_point(shape = 1) + geom_smooth(method =  MASS::rlm, se = F) + facet_grid(~half) + 
+   ggpubr::stat_cor(method = "spearman")
 ```
 
 ```{r}

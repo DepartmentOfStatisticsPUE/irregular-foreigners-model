@@ -7,6 +7,8 @@ output: html_notebook
 library(maxLik)
 library(sandwich)
 library(lmtest)
+library(extraDistr)
+library(actuar)
 ```
 
 ```{r}
@@ -79,7 +81,7 @@ plot(m0)
 wynik <- maxLik(logLik = ll, 
                 grad = grad, 
                 hess = hess,
-                data = dt2019_1, 
+                data = data_for_model, 
                 method = "NR",
                 start = c(alpha = coef(m0)[1]+1, beta = coef(m0)[2], phi = 1/sigma(m0)))
 summary(wynik)
@@ -265,63 +267,161 @@ ztnegbin_ll_hess <- function(param, data) {
 ```
 
 ```{r}
-m_start <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = dt2019_1)
+ztnegbin_ll_ukr <- function(param, data) {
+  alpha0 <- param[1]
+  alpha1 <- param[2]
+  beta <- param[3]
+  phi <- param[4]
+  m <- as.matrix(data$m)
+  n <- as.matrix(data$n)
+  N <- as.matrix(data$N)
+  X <- data$ukr
+  mu <- N^(alpha0+alpha1*ukr)*(n/N)^beta
+  s <- phi^-1
+  res <- lgamma(m+s) - lgamma(s) - approx_log_fac(m) -  
+    (m + s)*log(1+phi*mu) +  m*log(phi*mu) - log(1 - (1+phi*mu)^(-s))
+  res
+}
+
+ztnegbin_ll_ukr_grad <- function(param, data) {
+  alpha0 <- param[1]
+  alpha1 <- param[2]
+  beta <- param[3]
+  phi <- param[4]
+  m <- as.matrix(data$m)
+  n <- as.matrix(data$n)
+  N <- as.matrix(data$N)
+  X <-  data$ukr
+  mu <- as.numeric(N^(alpha0+alpha1*ukr)*(n/N)^beta)
+  v <- 1 + phi*mu
+  s <- phi^-1
+  c <- length(m)
+  d_phi <- numeric(c)
+  x <- cbind(log(N),log(N)*X,log(n/N))
+  for (i in 1:c) {
+    d_phi[i] <- sum(1/(phi*(0:(m[i]-1)) + 1)) + 
+      m[i] + 
+      log(v[i])/phi - 
+      mu[i]*(phi*m[i]+1)/v[i] + 
+      (v[i]*log(v[i])-phi*mu[i])/(phi*v[i]*(v[i]^s-1))
+  }
+  d_gamma <- -mu*x*as.numeric(1/(v*v^s-1) - (m+mu)/(mu*v))
+  cbind(d_gamma, d_phi)
+}
+
+
+ztnegbin_ll_ukr_hess <- function(param, data) {
+  alpha0 <- param[1]
+  alpha1 <- param[2]
+  beta <- param[3]
+  phi <- param[4]
+  m <- as.matrix(data$m)
+  n <- as.matrix(data$n)
+  N <- as.matrix(data$N)
+  X <-  data$ukr
+  mu <- as.numeric(N^(alpha0+alpha1*ukr)*(n/N)^beta)
+  v <- 1 + phi*mu
+  s <- phi^-1
+  c <- length(m)
+  d2_phi <- numeric(c)
+  x <- cbind(log(N),log(N)*X,log(n/N))
+
+  for (i in 1:c) {
+    d2_phi[i] <- sum(phi*(0:(m[i]-1))/(phi*(0:(m[i]-1)) + 1)^2) + 
+      log(v[i])^2*v[i]^s/(phi^2*(v[i]^s-1)^2) - 
+      log(v[i])*(2*mu[i]*v[i]^s+v[i]^s+phi*mu[i]*(v[i]^s-1)-1)/(phi*v[i]*(v[i]^s-1)^2) -
+      log(v[i])/phi + 
+      (phi*mu[i]*(2*mu[i]-m[i])+mu[i])/v[i]^2 + 
+      (mu[i]*(mu[i]*v[i]^s+v[i]^s+2*phi*mu[i]*(v[i]^s-1)-1)) / (v[i]^2*(v[i]^s-1)^2)
+  }
+  
+  d2_gamma <- t(x) %*% (x *(mu* as.numeric((v^s*(mu-1)+1)/(v^2*(v^s-1)^2) - (phi*m+1)/v^2)))
+  d2_gamma_phi <- mu*x*as.numeric((mu*(v^s + phi*(v^s-1)) - s*v^(s+1)*log(v))/(v^2*(v^s-1)^2) + (phi*(mu-m))/v^2)
+  
+  h <- as.matrix(Matrix::bdiag(d2_gamma, sum(d2_phi)))
+  colnames(h) <- rownames(h) <- c("alpha0", "alpga1","beta","phi")
+  h[4,1:3] <- h[1:3,4] <- colSums(d2_gamma_phi)
+  h
+  
+}
+
+```
+
+```{r}
+m_start <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = data_for_model)
 summary(m_start)
 plot(m_start)
 ```
 
 ```{r}
+data_for_model_1 <- data_for_model %>% filter(half == "First half of 2019")
+
 wynik_poisson <- maxLik(logLik = poisson_ll, grad = poisson_grad,
-                       data = dt2019_1, method = "BFGS",
+                       data = data_for_model_1, method = "BFGS",
                        start = c(alpha = unname(coef(m_start)[1] + 1),
                                  beta = unname(coef(m_start)[2])))
 
 wynik_tpoisson <- maxLik(logLik = tpoisson_ll,
-                       data = dt2019_1, method = "BFGS",
+                       data = data_for_model_1, method = "BFGS",
                        start = c(alpha = unname(coef(m_start)[1] + 1),
                                  beta = unname(coef(m_start)[2])))
 
 wynik_t2poisson <- maxLik(logLik = t2poisson_ll,
-                       data = subset(dt2019_1, m > 1), method = "BFGS",
+                       data = subset(data_for_model_1, m > 1), method = "BFGS",
                        start = c(alpha = unname(coef(m_start)[1] + 1),
                                  beta = unname(coef(m_start)[2])))
 
 
 wynik_lichun <- maxLik(logLik = lichun_ll, grad = lichun_ll_grad, hess = lichun_ll_hess,
-                      data = dt2019_1,
+                      data = data_for_model_1,
                       method = "BFGS",
                       start = c(alpha = unname(coef(m_start)[1] + 1) ,
                                 beta = unname(coef(m_start)[2]),
                                 phi = 1/sigma(m_start)))
 
 wynik_negbin <- maxLik(logLik = negbin_ll,
-                      data = dt2019_1, 
+                      data = data_for_model_1, 
                       method = "BFGS",
                       start = c(alpha = unname(coef(m_start)[1] + 1) ,
                                 beta = unname(coef(m_start)[2]), 
                                 phi = 1/sigma(m_start)))
 
 wynik_ztnegbin <- maxLik(logLik = ztnegbin_ll, 
-                         grad = ztnegbin_ll_grad, hess = ztnegbin_ll_hess,
-                      data = dt2019_1,
+                         #grad = ztnegbin_ll_grad, 
+                         #hess = ztnegbin_ll_hess,
+                      data = data_for_model_1,
                       method = "BFGS",
                       start = c(alpha = unname(coef(m_start)[1] + 1) ,
                                 beta = unname(coef(m_start)[2]), 
                                 phi = 1/sigma(m_start)))
 
+wynik_ztnegbin_ukr <- maxLik(logLik = ztnegbin_ll_ukr, 
+                             #grad = ztnegbin_ll_ukr_grad,
+                             #hess = ztnegbin_ll_ukr_hess,
+                      data = data_for_model_1,
+                      method = "BFGS",
+                      start = c(alpha0 = unname(coef(m_start)[1] + 1),
+                                alpha1 = unname(coef(m_start)[1] + 1 - 0.95),
+                                beta = unname(coef(m_start)[2]), 
+                                phi = 1/sigma(m_start)))
+
+
 summary(wynik_ztnegbin)
+summary(wynik_ztnegbin_ukr)
 ```
 
 ```{r}
-AIC(wynik_poisson)
+sapply(list(wynik_poisson, wynik_tpoisson, wynik_t2poisson,wynik_negbin, wynik_ztnegbin), AIC)
 ```
 
 ```{r}
-list(wynik_lichun,wynik_poisson, wynik_tpoisson, wynik_t2poisson, wynik_negbin, wynik_ztnegbin) %>%
-  set_names(c("lichun", "poisson", "tpoisson", "t2poisson", "negbin", "ztnegbin")) %>%
-  map_df( ~ data.frame(N_lower = sum(dt2019_1$N^coefci(.x)[1,1]),
-                       N = sum(dt2019_1$N^coef(.x)[1]),
-                       N_upper = sum(dt2019_1$N^coefci(.x)[1,2]),
+list(wynik_lichun,wynik_poisson, wynik_tpoisson, wynik_t2poisson, wynik_negbin, 
+     wynik_ztnegbin, wynik_ztnegbin_ukr) %>%
+  set_names(c("lichun", "poisson", "tpoisson", "t2poisson", "negbin", "ztnegbin", "ztnegbin_ukr")) %>%
+  map_df( ~ data.frame(alpha = coef(.x)[1], 
+                       M_lower = sum(data_for_model_1$N^coefci(.x)[1,1]),
+                       M = sum(data_for_model_1$N^coef(.x)[1]),
+                       M_upper = sum(data_for_model_1$N^coefci(.x)[1,2]),
                        AIC = AIC(.x)),
           .id = "model")
 ```

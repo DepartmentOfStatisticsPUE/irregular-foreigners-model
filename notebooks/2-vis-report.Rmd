@@ -9,6 +9,9 @@ output: html_notebook
 ```{r}
 library(tidyverse)
 library(xtable)
+library(ggpubr)
+library(ggrepel)
+theme_set(theme_bw())
 ```
 
 # Read the data
@@ -16,11 +19,286 @@ library(xtable)
 Read the data for the project
 
 ```{r}
-countries_all <- readRDS(file = "../data/data-for-model.rds")
+countries_all <- readRDS(file = "../data/data-for-model.rds") %>%
+  filter(is.na(eu)) %>%
+  filter(!country_efta) %>%
+  filter(pesel > 0)
+```
+
+Table with basic data -- Number of foreigners and countries by source, sex and half of the year
+
+```{r}
+### total
+countries_all %>%
+  count(country, half, wt = pesel, name = "pesel")  %>%
+  left_join(
+    countries_all %>% count(country, half, wt = police_reg, name = "police_reg")
+  ) %>%
+  left_join(
+    countries_all %>% count(country, half, wt = police_all, name = "police_all")
+  ) %>%
+  left_join(
+    countries_all %>% count(country, half, wt = border, name = "border")
+  ) %>%
+  group_by(half) %>%
+  summarise_if(is.numeric,sum) %>%
+  gather(source, vals, -half) %>%
+  spread(half, vals) %>%
+  xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+```
+```{r}
+### by sex
+countries_all %>%
+  count(country, sex, half, wt = pesel, name = "pesel")  %>%
+  left_join(
+    countries_all %>% count(country, sex, half, wt = police_reg, name = "police_reg")
+  ) %>%
+  left_join(
+    countries_all %>% count(country, sex, half, wt = police_all, name = "police_all")
+  ) %>%
+  left_join(
+    countries_all %>% count(country, sex, half, wt = border, name = "border")
+  ) %>%
+  group_by(half, sex) %>%
+  summarise_if(is.numeric,sum) %>%
+  gather(source, vals, -half, -sex) %>%
+  spread(half, vals) %>%
+  arrange(source, sex) %>%
+  xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+
+```
+```{r}
+## total countries
+countries_all %>%
+  distinct(country, half) %>%
+  count(half,  name = "pesel")  %>%
+  left_join(
+    countries_all %>%
+      filter(police_reg >0) %>%
+      distinct(country, half) %>%
+      count(half, name = "police_reg")
+  ) %>%
+  left_join(
+    countries_all %>%
+      filter(police_all >0) %>%
+      distinct(country, half) %>%
+      count(half, name = "police_all")
+  ) %>%
+  left_join(
+    countries_all %>%
+      filter(border >0) %>%
+      distinct(country, half) %>%
+      count(half, name = "border")
+  ) %>%
+  group_by(half) %>%
+  summarise_if(is.numeric,sum) %>%
+  gather(source, vals, -half) %>%
+  spread(half, vals) %>%
+  xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+
+```
+
+```{r}
+## sex countries
+countries_all %>%
+  distinct(sex, country, half) %>%
+  count(sex, half,  name = "pesel")  %>%
+  left_join(
+    countries_all %>%
+      filter(police_reg >0) %>%
+      distinct(sex, country, half) %>%
+      count(sex, half, name = "police_reg")
+  ) %>%
+  left_join(
+    countries_all %>%
+      filter(police_all >0) %>%
+      distinct(sex, country, half) %>%
+      count(sex, half, name = "police_all")
+  ) %>%
+  left_join(
+    countries_all %>%
+      filter(border >0) %>%
+      distinct(sex, country, half) %>%
+      count(sex, half, name = "border")
+  ) %>%
+  group_by(half, sex) %>%
+  summarise_if(is.numeric,sum) %>%
+  gather(source, vals, -half, -sex) %>%
+  spread(half, vals) %>%
+  arrange(source, sex) %>%
+  xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+```
+
+Prepare data for model
+
+```{r}
+countries_all %>%
+  group_by(country_continent, country, country_short, half, sex, age) %>%
+  summarise_at(vars(border, police_all, pesel), sum) %>%
+  ungroup() %>%
+  mutate(flag = border >0 & police_all > 0 & (police_all/pesel) < 1,
+         country_new = ifelse(!flag | country_short == "PRK", "other", country),
+         country_short = ifelse(country_new == "other", "UNK", country_short)) %>%
+  #count(country_continent, sex, age, flag) %>%
+  #filter(flag)
+  group_by(country_new, country_short, half, sex, age) %>%
+  summarise_at(vars(pesel, border, police_all), sum) %>%
+  #filter(country_new == "other")
+  mutate(border = ifelse(border == 0, 1, border)) %>% 
+  ungroup() %>%
+  mutate(sex = factor(sex, 1:2, c("Females", "Males")),
+         age = factor(age, 1:2, c("Working age", "Post-working age")),
+         half = factor(half, c("I", "II"), c("First half of 2019", "Second half of 2019"), ordered = T)) -> data_for_model
+```
+
+Plots data for model
+
+```{r}
+data_for_model %>%
+  ggplot(data = ., aes(x = log(pesel), 
+                       y = log(border/pesel),
+                       label = country_short)) + 
+  geom_point(aes(shape = paste(sex, age, sep = ": "), size = sqrt(pesel))) + 
+  scale_shape(solid = F) +
+  facet_wrap(~half) + 
+  geom_smooth(method = "lm", se = F, color = "black")  +
+  geom_text_repel(aes(size = sqrt(pesel))) + 
+  stat_cor(cor.coef.name = "rho", aes(label = ..r.label..)) + 
+  labs(size = expression(sqrt(PESEL)), shape = "Sex-Age", x = "Log(PESEL)", y = "Log(Border/PESEL)") +
+  theme(text =  element_text(size = 15)) -> p1
+
+data_for_model %>%
+  ggplot(data = ., aes(x = log(police_all/pesel), 
+                       y = log(border/pesel),
+                       label = country_short)) + 
+  geom_point(aes(shape = paste(sex, age, sep = ": "), size = sqrt(pesel))) + 
+  scale_shape(solid = F) +
+  facet_wrap(~half) + 
+  geom_smooth(method = "lm", se = F, color = "black")  +
+  geom_text_repel(aes(size = sqrt(pesel))) + 
+  stat_cor(cor.coef.name = "rho", aes(label = ..r.label..)) + 
+  labs(size = expression(sqrt(PESEL)), shape = "Sex-Age", x = "Log(Police/PESEL)", y = "Log(Border/PESEL")+
+  theme(text =  element_text(size = 15))   -> p2
+
+ggsave(plot = p1, filename = "../figs/fig-country-pesel.png", width = 10, height = 6)
+ggsave(plot = p2, filename = "../figs/fig-country-police.png", width = 10, height = 6)
+```
+
+Plots data for model by sex
+
+```{r}
+data_for_model %>%
+  ggplot(data = ., aes(x = log(pesel), 
+                       y = log(border/pesel),
+                       label = country_short,
+                       group = sex,
+                       color = sex)) + 
+  geom_point(aes(shape = paste(sex, age, sep = ": "), size = sqrt(pesel))) + 
+  scale_shape(solid = F) +
+  facet_wrap(~half) + 
+  geom_smooth(method = "lm", se = F)  +
+  geom_text_repel(aes(size = sqrt(pesel))) + 
+  stat_cor(cor.coef.name = "rho", aes(label = ..r.label..)) + 
+  scale_color_brewer(type = "qual", palette = "Set1") + 
+  labs(size = expression(sqrt(PESEL)), shape = "Sex-Age", color = "Sex", x = "Log(PESEL)", y = "Log(Border/PESEL)") +
+  theme(text =  element_text(size = 15))  -> p3
+
+data_for_model %>%
+  ggplot(data = ., aes(x = log(police_all/pesel), 
+                       y = log(border/pesel),
+                       label = country_short,
+                       group = sex,
+                       color = sex)) + 
+  geom_point(aes(shape = paste(sex, age, sep = ": "), size = sqrt(pesel))) + 
+  scale_shape(solid = F) +
+  facet_wrap(~half) + 
+  geom_smooth(method = "lm", se = F)  +
+  geom_text_repel(aes(size = sqrt(pesel))) + 
+  stat_cor(cor.coef.name = "rho", aes(label = ..r.label..)) + 
+  scale_color_brewer(type = "qual", palette = "Set1") + 
+  labs(size = expression(sqrt(PESEL)), shape = "Sex-Age", color = "Sex", x = "Log(Police/PESEL)", y = "Log(Border/PESEL") +
+  theme(text =  element_text(size = 15))  -> p4
+
+ggsave(plot = p3, filename = "../figs/fig-country-sex-pesel.png", width = 10, height = 6)
+ggsave(plot = p4, filename = "../figs/fig-country-sex-police.png", width = 10, height = 6)
+```
+
+```{r}
+saveRDS(object = data_for_model, file = "../data/data-for-model-aggregated.rds")
+```
+
+Correlations
+
+```{r}
+data_for_model %>%
+  #filter(country_new != "Ukraine") %>%
+  group_by(half) %>%
+  do(cor = cor(log(.$border/.$pesel), log(.$police_all/.$pesel))) %>%
+  unnest(cor)
+
+data_for_model %>%
+  #filter(country_new != "Ukraine") %>%
+  group_by(half, sex) %>%
+  do(cor = cor(log(.$border/.$pesel), log(.$pesel))) %>%
+  unnest(cor)
+
+data_for_model %>%
+  filter(country_new != "Ukraine") %>%
+  group_by(half, sex) %>%
+  do(cor = cor(log(.$border/.$pesel), log(.$pesel))) %>%
+  unnest(cor)
+
+
+data_for_model %>%
+  #filter(country_new != "Ukraine") %>%
+  group_by(half, sex) %>%
+  do(cor = cor(log(.$border/.$pesel), log(.$police_all/.$pesel))) %>%
+  unnest(cor)
+
+data_for_model %>%
+  filter(country_new != "Ukraine") %>%
+  group_by(half, sex) %>%
+  do(cor = cor(log(.$border/.$pesel), log(.$police_all/.$pesel))) %>%
+  unnest(cor)
+
+```
+
+List of countries
+
+```{r}
+data_for_model %>%
+  distinct(half, country_new) %>%
+  count(country_new) %>%
+  count(n)
+  
+data_for_model %>%
+  distinct(half, country_new) %>%
+  count(half) 
+
+```
+
+```{r}
+data_for_model %>%
+  group_by(half) %>%
+  summarise_if(is.numeric, sum) %>%
+  xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 0) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+```
+
+```{r}
+data_for_model %>%
+  group_by(half, ukraine = country_new == "Ukraine") %>%
+  summarise_if(is.numeric, sum) %>%
+  mutate_if(is.numeric, ~. / sum(.))
 ```
 
 
 ```{r}
-countries_all
+data_for_model$country_new %>% unique() %>% paste(collapse = ", ")
 ```
+
 

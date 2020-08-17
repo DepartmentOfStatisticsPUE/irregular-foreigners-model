@@ -1,0 +1,455 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(xtable)
+library(gnlm)
+library(broom)
+library(gamlss.dist)
+```
+
+
+```{r}
+data_for_model <- readRDS(file = "../data/data-for-model-aggregated.rds") %>%
+  rename(m = border,
+         N = pesel,
+         n = police_all) %>%
+  mutate(ukr = as.numeric(country_new == "Ukraine"),
+         sex = as.numeric(sex == "Males"))
+
+data_for_model
+```
+
+Source codes 
+
+```{r}
+source("../codes/likelihoods.R")
+```
+
+Linearized models
+
+```{r}
+m1 <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = data_for_model, subset = half == "First half of 2019")
+m2 <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = data_for_model, subset = half == "Second half of 2019")
+
+summary(m1)
+summary(m2)
+```
+
+Data for models
+
+I half
+
+```{r}
+## starting points
+m0 <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = data_for_model, subset = half == "First half of 2019")
+
+border <- data_for_model %>% filter(half == "First half of 2019") %>% pull(m)
+pop <- data_for_model %>% filter(half == "First half of 2019") %>% pull(N)
+pol_pop <- data_for_model %>% filter(half == "First half of 2019") %>% mutate(dd = n/N) %>% pull(dd)
+sex <- data_for_model %>% filter(half == "First half of 2019") %>% pull(sex)
+ukr <- data_for_model %>% filter(half == "First half of 2019") %>% pull(ukr)
+
+
+poiss_gen <- gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,b0=coef(m0)[2]))
+
+poiss_sex <- gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0+a1*sex)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+poiss_ukr <- gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0+a1*ukr)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+poiss_both <-  gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0+a1*ukr+a2*sex)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05,a2=coef(m0)[1]+1-0.05,  
+                             b0=coef(m0)[2]))
+
+negbin_gen <- gnlr(y = border, distribution = "negative binomial",
+                  mu = ~ pop^(a0)*(pol_pop)^(b0),
+                  shape = ~ 1/phi,
+                  pshape = list(phi= 1/sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,b0=coef(m0)[2]))
+
+negbin_sex <- gnlr(y = border, distribution = "negative binomial", 
+                  mu = ~ pop^(a0+a1*sex)*(pol_pop)^(b0),
+                  shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+negbin_ukr <- gnlr(y = border, distribution = "negative binomial", 
+                  mu = ~ pop^(a0+a1*ukr)*(pol_pop)^(b0),
+                  shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+negbin_both <-  gnlr(y = border, distribution = "negative binomial", 
+                    mu = ~ pop^(a0+a1*ukr+a2*sex)*(pol_pop)^(b0),
+                    shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05,a2=coef(m0)[1]+1-0.05,  
+                             b0=coef(m0)[2]))
+
+### truncated versions
+
+poiss_trun <- gnlr(y = border, dist = tpoisson_ll, pmu = c(coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun$fitted.values <- pop^(poiss_trun$coefficients[1])*(pol_pop)^(poiss_trun$coefficients[2])
+
+poiss_trun_sex <- gnlr(y = border, dist = tpoisson_ll_sex, pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun_sex$fitted.values <- 
+  pop^(poiss_trun_sex$coefficients[1]+poiss_trun_sex$coefficients[2]*sex)*(pol_pop)^(poiss_trun_sex$coefficients[3])
+
+poiss_trun_ukr <- gnlr(y = border, dist = tpoisson_ll_ukr, pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun_ukr$fitted.values <- 
+  pop^(poiss_trun_ukr$coefficients[1]+poiss_trun_ukr$coefficients[2]*ukr)*(pol_pop)^(poiss_trun_ukr$coefficients[3])
+
+
+poiss_trun_both <- gnlr(y = border, dist = tpoisson_ll_both, pmu = c(coef(m0)[1]+1, coef(m0)[1]+1,coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun_both$fitted.values <- 
+  pop^(poiss_trun_both$coefficients[1]+poiss_trun_both$coefficients[2]*ukr+poiss_trun_both$coefficients[3]*sex)*(pol_pop)^(poiss_trun_both$coefficients[4])
+
+
+
+neg_trun <- gnlr(y = border, dist = tnegbin_ll, 
+                 pmu = c(coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+neg_trun$fitted.values <- pop^(neg_trun$coefficients[1])*(pol_pop)^(neg_trun$coefficients[2])
+
+neg_trun_ukr <- gnlr(y = border, dist = tnegbin_ll_ukr, 
+                     pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+neg_trun_ukr$fitted.values <- 
+  pop^(neg_trun_ukr$coefficients[1]+neg_trun_ukr$coefficients[2]*sex)*(pol_pop)^(neg_trun_ukr$coefficients[3])
+
+
+neg_trun_sex <- gnlr(y = border, dist = tnegbin_ll_sex, 
+                     pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+neg_trun_sex$fitted.values <- 
+  pop^(neg_trun_sex$coefficients[1]+neg_trun_sex$coefficients[2]*ukr)*(pol_pop)^(neg_trun_sex$coefficients[3])
+
+
+neg_trun_both <- gnlr(y = border, dist = tnegbin_ll_both, 
+                      pmu = c(coef(m0)[1]+1, coef(m0)[1]+1,coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+
+neg_trun_both$fitted.values <- 
+  pop^(neg_trun_both$coefficients[1]+neg_trun_both$coefficients[2]*ukr+neg_trun_both$coefficients[3]*sex)*(pol_pop)^(neg_trun_both$coefficients[4])
+
+results_first_half <- list(
+  poiss_gen, poiss_sex, poiss_ukr, poiss_both, 
+negbin_gen, negbin_sex, negbin_ukr, negbin_both, 
+poiss_trun, poiss_trun_sex, poiss_trun_ukr, poiss_trun_both, 
+neg_trun, neg_trun_sex,  neg_trun_ukr, neg_trun_both
+)
+```
+
+
+
+```{r}
+## starting points
+m0 <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = data_for_model, subset = half == "Second half of 2019")
+
+border <- data_for_model %>% filter(half == "Second half of 2019") %>% pull(m)
+pop <- data_for_model %>% filter(half == "Second half of 2019") %>% pull(N)
+pol_pop <- data_for_model %>% filter(half == "Second half of 2019") %>% mutate(dd = n/N) %>% pull(dd)
+sex <- data_for_model %>% filter(half == "Second half of 2019") %>% pull(sex)
+ukr <- data_for_model %>% filter(half == "Second half of 2019") %>% pull(ukr)
+
+poiss_gen <- gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,b0=coef(m0)[2]))
+
+poiss_sex <- gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0+a1*sex)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+poiss_ukr <- gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0+a1*ukr)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+poiss_both <-  gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0+a1*ukr+a2*sex)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05,a2=coef(m0)[1]+1-0.05,  
+                             b0=coef(m0)[2]))
+
+negbin_gen <- gnlr(y = border, distribution = "negative binomial",
+                  mu = ~ pop^(a0)*(pol_pop)^(b0),
+                  shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,b0=coef(m0)[2]))
+
+negbin_sex <- gnlr(y = border, distribution = "negative binomial", 
+                  mu = ~ pop^(a0+a1*sex)*(pol_pop)^(b0),
+                  shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+negbin_ukr <- gnlr(y = border, distribution = "negative binomial", 
+                  mu = ~ pop^(a0+a1*ukr)*(pol_pop)^(b0),
+                  shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+negbin_both <-  gnlr(y = border, distribution = "negative binomial", 
+                    mu = ~ pop^(a0+a1*ukr+a2*sex)*(pol_pop)^(b0),
+                    shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05,a2=coef(m0)[1]+1-0.05,  
+                             b0=coef(m0)[2]))
+
+### truncated versions
+
+poiss_trun <- gnlr(y = border, dist = tpoisson_ll, pmu = c(coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun$fitted.values <- pop^(poiss_trun$coefficients[1])*(pol_pop)^(poiss_trun$coefficients[2])
+
+poiss_trun_sex <- gnlr(y = border, dist = tpoisson_ll_sex, pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun_sex$fitted.values <- 
+  pop^(poiss_trun_sex$coefficients[1]+poiss_trun_sex$coefficients[2]*sex)*(pol_pop)^(poiss_trun_sex$coefficients[3])
+
+poiss_trun_ukr <- gnlr(y = border, dist = tpoisson_ll_ukr, pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun_ukr$fitted.values <- 
+  pop^(poiss_trun_ukr$coefficients[1]+poiss_trun_ukr$coefficients[2]*ukr)*(pol_pop)^(poiss_trun_ukr$coefficients[3])
+
+
+poiss_trun_both <- gnlr(y = border, dist = tpoisson_ll_both, pmu = c(coef(m0)[1]+1, coef(m0)[1]+1,coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun_both$fitted.values <- 
+  pop^(poiss_trun_both$coefficients[1]+poiss_trun_both$coefficients[2]*ukr+poiss_trun_both$coefficients[3]*sex)*(pol_pop)^(poiss_trun_both$coefficients[4])
+
+
+
+neg_trun <- gnlr(y = border, dist = tnegbin_ll, 
+                 pmu = c(coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+neg_trun$fitted.values <- pop^(neg_trun$coefficients[1])*(pol_pop)^(neg_trun$coefficients[2])
+
+neg_trun_ukr <- gnlr(y = border, dist = tnegbin_ll_ukr, 
+                     pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+neg_trun_ukr$fitted.values <- 
+  pop^(neg_trun_ukr$coefficients[1]+neg_trun_ukr$coefficients[2]*sex)*(pol_pop)^(neg_trun_ukr$coefficients[3])
+
+
+neg_trun_sex <- gnlr(y = border, dist = tnegbin_ll_sex, 
+                     pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+neg_trun_sex$fitted.values <- 
+  pop^(neg_trun_sex$coefficients[1]+neg_trun_sex$coefficients[2]*ukr)*(pol_pop)^(neg_trun_sex$coefficients[3])
+
+
+neg_trun_both <- gnlr(y = border, dist = tnegbin_ll_both, 
+                      pmu = c(coef(m0)[1]+1, coef(m0)[1]+1,coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+
+neg_trun_both$fitted.values <- 
+  pop^(neg_trun_both$coefficients[1]+neg_trun_both$coefficients[2]*ukr+neg_trun_both$coefficients[3]*sex)*(pol_pop)^(neg_trun_both$coefficients[4])
+
+results_second_half <- list(
+  poiss_gen, poiss_sex, poiss_ukr, poiss_both, 
+  negbin_gen, negbin_sex, negbin_ukr, negbin_both, 
+  poiss_trun, poiss_trun_sex, poiss_trun_ukr, poiss_trun_both, 
+  neg_trun, neg_trun_sex, neg_trun_ukr, neg_trun_both
+)
+
+negbin_ukr$coefficients
+neg_trun_ukr$coefficients
+```
+
+
+```{r}
+saveRDS(list(first_half=results_first_half, second_half = results_second_half), file = "../results/estimated-models.rds")
+```
+
+
+Summaries for the paper
+
+```{r}
+border <- data_for_model %>% filter(half == "First half of 2019") %>% pull(m)
+pop <- data_for_model %>% filter(half == "First half of 2019") %>% pull(N)
+pol_pop <- data_for_model %>% filter(half == "First half of 2019") %>% mutate(dd = n/N) %>% pull(dd)
+sex <- data_for_model %>% filter(half == "First half of 2019") %>% pull(sex)
+ukr <- data_for_model %>% filter(half == "First half of 2019") %>% pull(ukr)
+
+
+results_first_half %>% map("fitted.values") %>% map_dbl(~ sum( ((3*border^(2/3)-3*.x^(2/3))/(2*.x^(1/6)))^2)) -> soss1
+results_first_half %>% map("coefficients") %>% map_dbl(length) -> par_number1
+results_first_half %>% map_dbl("maxlike") -> ll_models1
+results_first_half %>% map_dbl("aic") -> aic_models1
+2*ll_models1-log(NROW(border))*par_number1 -> bic_models1
+
+
+
+totals1 <- c("poisson"= sum(pop^results_first_half[[1]]$coefficients[1]), 
+            "poisson sex" = sum(pop^(results_first_half[[2]]$coefficients[1]+sex*results_first_half[[2]]$coefficients[2])),
+            "poisson ukr" = sum(pop^(results_first_half[[3]]$coefficients[1]+ukr*results_first_half[[3]]$coefficients[2])),
+            "poisson both" = 
+              sum(pop^(results_first_half[[4]]$coefficients[1]+ukr*results_first_half[[4]]$coefficients[2]+
+                         sex*results_first_half[[4]]$coefficients[3])),
+            "negbin" = sum(pop^results_first_half[[5]]$coefficients[1]), 
+            "negbin sex" = sum(pop^(results_first_half[[6]]$coefficients[1]+sex*results_first_half[[6]]$coefficients[2])), 
+            "negbin ukr" = sum(pop^(results_first_half[[7]]$coefficients[1]+ukr*results_first_half[[7]]$coefficients[2])),
+            "negbin both" = 
+              sum(pop^(results_first_half[[8]]$coefficients[1]+ukr*results_first_half[[8]]$coefficients[2]+
+                         sex*results_first_half[[8]]$coefficients[3])),
+            
+            "tpoisson"= sum(pop^results_first_half[[9]]$coefficients[1]), 
+            "tpoisson sex" = sum(pop^(results_first_half[[10]]$coefficients[1]+sex*results_first_half[[10]]$coefficients[2])),
+            "tpoisson ukr" = sum(pop^(results_first_half[[11]]$coefficients[1]+ukr*results_first_half[[11]]$coefficients[2])),
+            "tpoisson both" = 
+              sum(pop^(results_first_half[[12]]$coefficients[1]+ukr*results_first_half[[12]]$coefficients[2]+
+                         sex*results_first_half[[12]]$coefficients[3])),
+            "tnegbin" = sum(pop^results_first_half[[13]]$coefficients[1]), 
+            "tnegbin sex" = sum(pop^(results_first_half[[14]]$coefficients[1]+sex*results_first_half[[14]]$coefficients[2])), 
+            "tnegbin ukr" = sum(pop^(results_first_half[[15]]$coefficients[1]+ukr*results_first_half[[15]]$coefficients[2])),
+            "tnegbin both" = 
+              sum(pop^(results_first_half[[16]]$coefficients[1]+ukr*results_first_half[[16]]$coefficients[2]+
+                         sex*results_first_half[[16]]$coefficients[3]))
+            )
+
+omega_hat1 <- c("poisson"= mean(pol_pop^results_first_half[[1]]$coefficients[2]), 
+            "poisson sex" = mean(pol_pop^results_first_half[[2]]$coefficients[3]), 
+            "poisson ukr" = mean(pol_pop^results_first_half[[3]]$coefficients[3]), 
+            "poisson both" = mean(pol_pop^results_first_half[[4]]$coefficients[4]), 
+            "negbin" = mean(pol_pop^results_first_half[[5]]$coefficients[2]), 
+            "negbin sex" = mean(pol_pop^results_first_half[[6]]$coefficients[3]), 
+            "negbin ukr" = mean(pol_pop^results_first_half[[7]]$coefficients[3]), 
+            "negbin both" = mean(pol_pop^results_first_half[[8]]$coefficients[4]),
+            "tpoisson"= mean(pol_pop^results_first_half[[9]]$coefficients[2]), 
+            "tpoisson sex" = mean(pol_pop^results_first_half[[10]]$coefficients[3]), 
+            "tpoisson ukr" = mean(pol_pop^results_first_half[[11]]$coefficients[3]), 
+            "tpoisson both" = mean(pol_pop^results_first_half[[12]]$coefficients[4]), 
+            "tnegbin" = mean(pol_pop^results_first_half[[13]]$coefficients[2]), 
+            "tnegbin sex" = mean(pol_pop^results_first_half[[14]]$coefficients[3]), 
+            "tnegbin ukr" = mean(pol_pop^results_first_half[[15]]$coefficients[3]), 
+            "tnegbin both" = mean(pol_pop^results_first_half[[16]]$coefficients[4]))
+
+
+## second half 
+
+border <- data_for_model %>% filter(half == "Second half of 2019") %>% pull(m)
+pop <- data_for_model %>% filter(half == "Second half of 2019") %>% pull(N)
+pol_pop <- data_for_model %>% filter(half == "Second half of 2019") %>% mutate(dd = n/N) %>% pull(dd)
+sex <- data_for_model %>% filter(half == "Second half of 2019") %>% pull(sex)
+ukr <- data_for_model %>% filter(half == "Second half of 2019") %>% pull(ukr)
+
+
+results_second_half %>% map("fitted.values") %>% map_dbl(~ sum( ((3*border^(2/3)-3*.x^(2/3))/(2*.x^(1/6)))^2)) -> soss2
+results_second_half %>% map("coefficients") %>% map_dbl(length) -> par_number2
+results_second_half %>% map_dbl("maxlike") -> ll_models2
+results_second_half %>% map_dbl("aic") -> aic_models2
+2*ll_models2-log(NROW(border))*par_number2 -> bic_models2
+
+totals2 <- c("poisson"= sum(pop^results_second_half[[1]]$coefficients[1]), 
+            "poisson sex" = sum(pop^(results_second_half[[2]]$coefficients[1]+sex*results_second_half[[2]]$coefficients[2])),
+            "poisson ukr" = sum(pop^(results_second_half[[3]]$coefficients[1]+ukr*results_second_half[[3]]$coefficients[2])),
+            "poisson both" = 
+              sum(pop^(results_second_half[[4]]$coefficients[1]+ukr*results_second_half[[4]]$coefficients[2]+
+                         sex*results_second_half[[4]]$coefficients[3])),
+            "negbin" = sum(pop^results_second_half[[5]]$coefficients[1]), 
+            "negbin sex" = sum(pop^(results_second_half[[6]]$coefficients[1]+sex*results_second_half[[6]]$coefficients[2])), 
+            "negbin ukr" = sum(pop^(results_second_half[[7]]$coefficients[1]+ukr*results_second_half[[7]]$coefficients[2])),
+            "negbin both" = 
+              sum(pop^(results_second_half[[8]]$coefficients[1]+ukr*results_second_half[[8]]$coefficients[2]+
+                         sex*results_second_half[[8]]$coefficients[3])),
+            
+            "tpoisson"= sum(pop^results_second_half[[9]]$coefficients[1]), 
+            "tpoisson sex" = sum(pop^(results_second_half[[10]]$coefficients[1]+sex*results_second_half[[10]]$coefficients[2])),
+            "tpoisson ukr" = sum(pop^(results_second_half[[11]]$coefficients[1]+ukr*results_second_half[[11]]$coefficients[2])),
+            "tpoisson both" = 
+              sum(pop^(results_second_half[[12]]$coefficients[1]+ukr*results_second_half[[12]]$coefficients[2]+
+                         sex*results_second_half[[12]]$coefficients[3])),
+            "tnegbin" = sum(pop^results_second_half[[13]]$coefficients[1]), 
+            "tnegbin sex" = sum(pop^(results_second_half[[14]]$coefficients[1]+sex*results_second_half[[14]]$coefficients[2])), 
+            "tnegbin ukr" = sum(pop^(results_second_half[[15]]$coefficients[1]+ukr*results_second_half[[15]]$coefficients[2])),
+            "tnegbin both" = 
+              sum(pop^(results_second_half[[16]]$coefficients[1]+ukr*results_second_half[[16]]$coefficients[2]+
+                         sex*results_second_half[[16]]$coefficients[3]))
+            )
+
+omega_hat2 <- c("poisson"= mean(pol_pop^results_second_half[[1]]$coefficients[2]), 
+            "poisson sex" = mean(pol_pop^results_second_half[[2]]$coefficients[3]), 
+            "poisson ukr" = mean(pol_pop^results_second_half[[3]]$coefficients[3]), 
+            "poisson both" = mean(pol_pop^results_second_half[[4]]$coefficients[4]), 
+            "negbin" = mean(pol_pop^results_second_half[[5]]$coefficients[2]), 
+            "negbin sex" = mean(pol_pop^results_second_half[[6]]$coefficients[3]), 
+            "negbin ukr" = mean(pol_pop^results_second_half[[7]]$coefficients[3]), 
+            "negbin both" = mean(pol_pop^results_second_half[[8]]$coefficients[4]),
+            "tpoisson"= mean(pol_pop^results_second_half[[9]]$coefficients[2]), 
+            "tpoisson sex" = mean(pol_pop^results_second_half[[10]]$coefficients[3]), 
+            "tpoisson ukr" = mean(pol_pop^results_second_half[[11]]$coefficients[3]), 
+            "tpoisson both" = mean(pol_pop^results_second_half[[12]]$coefficients[4]), 
+            "tnegbin" = mean(pol_pop^results_second_half[[13]]$coefficients[2]), 
+            "tnegbin sex" = mean(pol_pop^results_second_half[[14]]$coefficients[3]), 
+            "tnegbin ukr" = mean(pol_pop^results_second_half[[15]]$coefficients[3]), 
+            "tnegbin both" = mean(pol_pop^results_second_half[[16]]$coefficients[4]))
+
+```
+
+```{r}
+data.frame(
+  ll=ll_models1, 
+  aic=aic_models1, 
+  bic=bic_models1,
+  xi=totals1,
+  chisq=soss1
+)  %>%
+  bind_rows(
+    data.frame(
+      ll=ll_models2, 
+      aic=aic_models2, 
+      bic=bic_models2,
+      xi=totals2,
+      chisq=soss2
+)) %>%
+  xtable(digits = 1)
+```
+
+Final models for the paper
+
+```{r}
+round(results_first_half[[15]]$coefficients,3)
+round(results_first_half[[15]]$se,3)
+round(results_second_half[[15]]$coefficients,3)
+round(results_second_half[[15]]$se,3)
+
+round(results_first_half[[16]]$coefficients,3)
+round(results_first_half[[16]]$se,3)
+round(results_second_half[[16]]$coefficients,3)
+round(results_second_half[[16]]$se,3)
+
+```
+
+```{r}
+data_for_model %>% 
+  filter(half == "First half of 2019") %>%
+  mutate(xi_lower =  N^(0.5823612+ukr*-0.0029982),
+         xi_upper  = N^(0.7156388+ukr*0.192)) %>%
+  summarise(xi_lower_tot = sum(xi_lower),
+            xi_upper_tot = sum(xi_upper),
+            xi_lower_ukr = sum(ukr*xi_lower),
+            xi_upper_ukr = sum(ukr*xi_upper),
+            xi_lower_rest = sum(xi_lower*(ukr==0)),
+            xi_upper_rest = sum(xi_upper*(ukr==0)))
+```
+
+Add information to the dataset
+
+```{r}
+data_for_model %>% 
+  filter(half == "First half of 2019") %>%
+  mutate(M = N^(results_first_half[[15]]$coefficients[1]+ukr*results_first_half[[15]]$coefficients[2]),
+         m_hat = M*(n/N)^results_first_half[[15]]$coefficients[3]) %>%
+  summarise(total = sum(M),
+            total_ukr = sum(M*ukr),
+            total_work_age = sum(M*(age== "Working age")),
+            total_non_work_age = total-total_work_age,
+            total_males = sum(M*sex),
+            total_females = total - total_males) -> tab_first
+
+data_for_model %>% 
+  filter(half == "Second half of 2019") %>%
+  mutate(M = N^(results_second_half[[15]]$coefficients[1]+ukr*results_second_half[[15]]$coefficients[2]),
+         m_hat = M*(n/N)^results_second_half[[15]]$coefficients[3]) %>%
+  summarise(total = sum(M),
+            total_ukr = sum(M*ukr),
+            total_work_age = sum(M*(age== "Working age")),
+            total_non_work_age = total-total_work_age,
+            total_males = sum(M*sex),
+            total_females = total - total_males)  -> tab_second
+
+
+bind_rows(tab_first, tab_second) %>%
+  xtable(digits = 0) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+```
+

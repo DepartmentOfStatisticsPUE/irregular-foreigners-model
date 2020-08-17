@@ -1,0 +1,364 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(maxLik)
+library(lmtest)
+library(tidyverse)
+library(xtable)
+library(gnlm)
+```
+
+Data 
+
+```{r}
+data_for_model <- readRDS(file = "../data/data-for-model.rds") %>%
+  rename(m = border,
+         N = pesel,
+         n = police_all) %>%
+  mutate(ukr = as.numeric(country_new == "Ukraine"),
+         sex = as.numeric(sex == "Males"))
+```
+
+Functions
+
+```{r}
+source("../codes/codes-models.R")
+```
+
+Starting points
+
+```{r}
+m0 <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = data_for_model)
+summary(m0)
+plot(m0)
+```
+
+Model without covariates
+
+```{r}
+zhang_basic <- data_for_model %>%
+  group_by(half) %>%
+  nest() %>%
+  do(model_overall = maxLik(logLik =lichun_ll, grad = lichun_ll_grad, hess = lichun_ll_hess, 
+                            data = .$data[[1]],
+                            method = "NR",
+                            start = c(alpha = coef(m0)[1]+1, beta = coef(m0)[2], phi = 1/sigma(m0))),
+     model_sex =     maxLik(logLik =lichun_ll_sex, grad = lichun_ll_sex_grad, hess = lichun_ll_sex_hess, 
+                            data = .$data[[1]],
+                            method = "NR",
+                            start = c(alpha_0 = coef(m0)[1]+1, alpha_1 = coef(m0)[1]+0.95, 
+                                      beta_0 = coef(m0)[2], beta_1 = coef(m0)[2]-0.95 , phi = 1/sigma(m0))),
+     model_ukr =     maxLik(logLik =lichun_ll_ukr, grad = lichun_ll_ukr_grad, hess = lichun_ll_ukr_hess, 
+                            data = .$data[[1]],
+                            method = "NR",
+                            start = c(alpha_0 = coef(m0)[1]+1, alpha_1 = coef(m0)[1]+0.95, 
+                                      beta_0 = coef(m0)[2], beta_1 = coef(m0)[2]-0.95 , phi = 1/sigma(m0))),
+     model_two =     maxLik(logLik =lichun_ll_two, grad = lichun_ll_two_grad, hess = lichun_ll_two_hess, 
+                            data = .$data[[1]],
+                            method = "NR",
+                            start = c(alpha_0 = coef(m0)[1]+1, alpha_1 = coef(m0)[1]+0.95, alpha_2 = coef(m0)[1]+0.95, 
+                                      beta_0 = coef(m0)[2], beta_1 = coef(m0)[2]-0.95 , beta_2 = coef(m0)[2]-0.95,
+                                      phi = 1/sigma(m0))),
+     data = .$data[[1]])
+
+
+summary(zhang_basic$model_overall[[1]])
+```
+
+Sampling from the model
+
+```{r}
+N_res <- zhang_basic$data[[1]]$N
+n_res <- zhang_basic$data[[1]]$n
+ukr_res <- zhang_basic$data[[1]]$ukr
+mu <- N_res^(0.63270 + 0.11180*ukr_res)*(n_res/N_res)^(0.54718+0.04883*ukr_res)
+m_hat <- rpois(n = NROW(N_res), lambda = mu*rgamma(n = NROW(N_res), shape = 2.06997, rate = 1))
+
+plot(x = sqrt(zhang_basic$data[[1]]$m), 
+     y = sqrt(m_hat),
+    xlab = "m", ylab = "mu")
+abline(a=0,b=1, col = "red")
+
+```
+
+```{r}
+zhang_basic %>%
+  mutate(M_overall = sum(.$data[[1]]$N^coef(.$model_overall[[1]])[1]),
+         M_sex = sum(.$data[[1]]$N^(coef(.$model_sex[[1]])[1] + coef(.$model_sex[[1]])[2]*.$data[[1]]$sex)),
+         M_ukr = sum(.$data[[1]]$N^(coef(.$model_ukr[[1]])[1] + coef(.$model_ukr[[1]])[2]*.$data[[1]]$ukr)),
+         M_two = sum(.$data[[1]]$N^(coef(.$model_two[[1]])[1] + coef(.$model_two[[1]])[2]*.$data[[1]]$sex +  coef(.$model_two[[1]])[3]*.$data[[1]]$ukr)))
+```
+
+```{r}
+sapply(zhang_basic$model_overall,AIC)
+sapply(zhang_basic$model_sex,AIC)
+sapply(zhang_basic$model_ukr,AIC)
+sapply(zhang_basic$model_two,AIC)
+
+-2*sapply(zhang_basic$model_overall, logLik)+3*log(sapply(zhang_basic$data, nrow))
+-2*sapply(zhang_basic$model_sex, logLik)+5*log(sapply(zhang_basic$data, nrow))
+-2*sapply(zhang_basic$model_ukr, logLik)+5*log(sapply(zhang_basic$data, nrow))
+-2*sapply(zhang_basic$model_two, logLik)+7*log(sapply(zhang_basic$data, nrow))
+```
+
+```{r}
+zhang_basic %>%
+  mutate(fitted_ove = list(.$data[[1]]$N^coef(.$model_overall[[1]])[1]*(.$data[[1]]$n/.$data[[1]]$N)^coef(.$model_overall[[1]])[2]),
+         m = list(.$data[[1]]$m)) %>%
+  filter(half == "First half of 2019") %>%
+  select(half, fitted_ove, m) %>%
+  unnest() %>%
+  ggplot(data = ., aes(x = m, y = fitted_ove)) +
+  geom_point() +
+  scale_y_sqrt(limits = c(0, 2000)) + scale_x_sqrt(limits = c(0, 2000)) + 
+  geom_abline(slope = 1, intercept = 0, color = "red") 
+  
+
+zhang_basic %>%
+  mutate(fitted_ove = list(.$data[[1]]$N^coef(.$model_overall[[1]])[1]*(.$data[[1]]$n/.$data[[1]]$N)^coef(.$model_overall[[1]])[2]),
+         m = list(.$data[[1]]$m)) %>%
+  filter(half == "First half of 2019") %>%
+  select(half, fitted_ove, m) %>%
+  unnest()  %>%
+  summarise(ss = sum( (m-fitted_ove)^2))
+
+zhang_basic %>%
+  mutate(fitted_ove = list( .$data[[1]]$N^(coef(.$model_ukr[[1]])[1] + coef(.$model_ukr[[1]])[2]*.$data[[1]]$ukr)*
+                             (.$data[[1]]$n/.$data[[1]]$N)^(coef(.$model_ukr[[1]])[1] + coef(.$model_ukr[[1]])[2]*.$data[[1]]$ukr) ),
+         m = list(.$data[[1]]$m)) %>%
+  filter(half == "First half of 2019") %>%
+  select(half, fitted_ove, m) %>%
+  unnest() %>%
+  ggplot(data = ., aes(x = m, y = fitted_ove)) +
+  geom_point() +
+  scale_y_sqrt(limits = c(0, 2000)) + scale_x_sqrt(limits = c(0, 2000)) + 
+  geom_abline(slope = 1, intercept = 0, color = "red") 
+  
+zhang_basic %>%
+  mutate(fitted_ove = list( .$data[[1]]$N^(coef(.$model_ukr[[1]])[1] + coef(.$model_ukr[[1]])[2]*.$data[[1]]$ukr)*
+                             (.$data[[1]]$n/.$data[[1]]$N)^(coef(.$model_ukr[[1]])[1] + coef(.$model_ukr[[1]])[2]*.$data[[1]]$ukr) ),
+         m = list(.$data[[1]]$m)) %>%
+  filter(half == "First half of 2019") %>%
+  select(half, fitted_ove, m) %>%
+  unnest()  %>%
+  summarise(ss = sum( (m-fitted_ove)^2))
+
+
+zhang_basic %>%
+  mutate(fitted_ove = list( .$data[[1]]$N^(coef(.$model_sex[[1]])[1] + coef(.$model_sex[[1]])[2]*.$data[[1]]$sex)*
+                             (.$data[[1]]$n/.$data[[1]]$N)^(coef(.$model_sex[[1]])[1] + coef(.$model_sex[[1]])[2]*.$data[[1]]$sex) ),
+         m = list(.$data[[1]]$m)) %>%
+  filter(half == "First half of 2019") %>%
+  select(half, fitted_ove, m) %>%
+  unnest() %>%
+  ggplot(data = ., aes(x = m, y = fitted_ove)) +
+  geom_point() +
+  scale_y_sqrt(limits = c(0, 2000)) + scale_x_sqrt(limits = c(0, 2000)) + 
+  geom_abline(slope = 1, intercept = 0, color = "red") 
+  
+zhang_basic %>%
+  mutate(fitted_ove = list( .$data[[1]]$N^(coef(.$model_sex[[1]])[1] + coef(.$model_sex[[1]])[2]*.$data[[1]]$sex)*
+                             (.$data[[1]]$n/.$data[[1]]$N)^(coef(.$model_sex[[1]])[1] + coef(.$model_sex[[1]])[2]*.$data[[1]]$sex) ),
+         m = list(.$data[[1]]$m)) %>%
+  filter(half == "First half of 2019") %>%
+  select(half, fitted_ove, m) %>%
+  unnest()  %>%
+  summarise(ss = sum( (m-fitted_ove)^2))
+
+
+
+zhang_basic %>%
+  mutate(fitted_ove = list( .$data[[1]]$N^(coef(.$model_two[[1]])[1] + coef(.$model_two[[1]])[2]*.$data[[1]]$sex + coef(.$model_two[[1]])[3]*.$data[[1]]$ukr)*
+                             (.$data[[1]]$n/.$data[[1]]$N)^(coef(.$model_two[[1]])[1] + coef(.$model_two[[1]])[2]*.$data[[1]]$sex + coef(.$model_two[[1]])[3]*.$data[[1]]$ukr) ),
+         m = list(.$data[[1]]$m)) %>%
+  filter(half == "First half of 2019") %>%
+  select(half, fitted_ove, m) %>%
+  unnest() %>%
+  ggplot(data = ., aes(x = m, y = fitted_ove)) +
+  geom_point() +
+  scale_y_sqrt(limits = c(0, 2000)) + scale_x_sqrt(limits = c(0, 2000)) + 
+  geom_abline(slope = 1, intercept = 0, color = "red") 
+
+zhang_basic %>%
+  mutate(fitted_ove = list( .$data[[1]]$N^(coef(.$model_two[[1]])[1] + coef(.$model_two[[1]])[2]*.$data[[1]]$sex + coef(.$model_two[[1]])[3]*.$data[[1]]$ukr)*
+                             (.$data[[1]]$n/.$data[[1]]$N)^(coef(.$model_two[[1]])[1] + coef(.$model_two[[1]])[2]*.$data[[1]]$sex + coef(.$model_two[[1]])[3]*.$data[[1]]$ukr) ),
+         m = list(.$data[[1]]$m)) %>%
+  filter(half == "First half of 2019") %>%
+  select(half, fitted_ove, m) %>%
+  unnest()  %>%
+  summarise(ss = sum( (m-fitted_ove)^2))
+
+
+```
+
+Other models with GNLM
+
+- Poisson
+- negative binomial
+- 
+
+```{r}
+m0 <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = data_for_model)
+border <- data_for_model %>% filter(half == "First half of 2019") %>% pull(m)
+pop <- data_for_model %>% filter(half == "First half of 2019") %>% pull(N)
+pol_pop <- data_for_model %>% filter(half == "First half of 2019") %>% mutate(dd = n/N) %>% pull(dd)
+sex <- data_for_model %>% filter(half == "First half of 2019") %>% pull(sex)
+ukr <- data_for_model %>% filter(half == "First half of 2019") %>% pull(ukr)
+
+poiss_gen <- gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,b0=coef(m0)[2]))
+
+poiss_sex <- gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0+a1*sex)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+poiss_ukr <- gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0+a1*ukr)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+poiss_both <-  gnlr(y = border, distribution = "Poisson", mu = ~ pop^(a0+a1*ukr+a2*sex)*(pol_pop)^(b0),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05,a2=coef(m0)[1]+1-0.05,  
+                             b0=coef(m0)[2]))
+
+negbin_gen <- gnlr(y = border, distribution = "negative binomial",
+                  mu = ~ pop^(a0)*(pol_pop)^(b0),
+                  shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,b0=coef(m0)[2]))
+
+negbin_sex <- gnlr(y = border, distribution = "negative binomial", 
+                  mu = ~ pop^(a0+a1*sex)*(pol_pop)^(b0),
+                  shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+negbin_ukr <- gnlr(y = border, distribution = "negative binomial", 
+                  mu = ~ pop^(a0+a1*ukr)*(pol_pop)^(b0),
+                  shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05, b0=coef(m0)[2]))
+
+negbin_both <-  gnlr(y = border, distribution = "negative binomial", 
+                    mu = ~ pop^(a0+a1*ukr+a2*sex)*(pol_pop)^(b0),
+                    shape = ~ phi,
+                  pshape = list(phi= sigma(m0)),
+                  pmu = list(a0=coef(m0)[1]+1,a1=coef(m0)[1]+1-0.05,a2=coef(m0)[1]+1-0.05,  
+                             b0=coef(m0)[2]))
+```
+
+
+User supplied 
+
+
+```{r}
+
+
+poiss_trun <- gnlr(y = border, dist = tpoisson_ll, pmu = c(coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun$fitted.values <- pop^(poiss_trun$coefficients[1])*(pol_pop)^(poiss_trun$coefficients[2])
+
+poiss_trun_sex <- gnlr(y = border, dist = tpoisson_ll_sex, pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun_sex$fitted.values <- 
+  pop^(poiss_trun_sex$coefficients[1]+poiss_trun_sex$coefficients[2]*sex)*(pol_pop)^(poiss_trun_sex$coefficients[3])
+
+poiss_trun_ukr <- gnlr(y = border, dist = tpoisson_ll_ukr, pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun_ukr$fitted.values <- 
+  pop^(poiss_trun_ukr$coefficients[1]+poiss_trun_ukr$coefficients[2]*ukr)*(pol_pop)^(poiss_trun_ukr$coefficients[3])
+
+
+poiss_trun_both <- gnlr(y = border, dist = tpoisson_ll_both, pmu = c(coef(m0)[1]+1, coef(m0)[1]+1,coef(m0)[1]+1, coef(m0)[2]))
+poiss_trun_both$fitted.values <- 
+  pop^(poiss_trun_both$coefficients[1]+poiss_trun_both$coefficients[2]*ukr+poiss_trun_both$coefficients[3]*sex)*(pol_pop)^(poiss_trun_both$coefficients[4])
+
+
+
+
+
+
+neg_trun <- gnlr(y = border, dist = tnegbin_ll, 
+                 pmu = c(coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+neg_trun$fitted.values <- pop^(neg_trun$coefficients[1])*(pol_pop)^(neg_trun$coefficients[2])
+
+neg_trun_ukr <- gnlr(y = border, dist = tnegbin_ll_ukr, 
+                     pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+neg_trun_ukr$fitted.values <- 
+  pop^(neg_trun_ukr$coefficients[1]+neg_trun_ukr$coefficients[2]*sex)*(pol_pop)^(neg_trun_ukr$coefficients[3])
+
+
+neg_trun_sex <- gnlr(y = border, dist = tnegbin_ll_sex, 
+                     pmu = c(coef(m0)[1]+1, coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+neg_trun_sex$fitted.values <- 
+  pop^(neg_trun_sex$coefficients[1]+neg_trun_sex$coefficients[2]*ukr)*(pol_pop)^(neg_trun_sex$coefficients[3])
+
+
+neg_trun_both <- gnlr(y = border, dist = tnegbin_ll_both, 
+                      pmu = c(coef(m0)[1]+1, coef(m0)[1]+1,coef(m0)[1]+1, coef(m0)[2], phi = 1/sigma(m0)))
+
+neg_trun_both$fitted.values <- 
+  pop^(neg_trun_both$coefficients[1]+neg_trun_both$coefficients[2]*ukr+neg_trun_both$coefficients[3]*sex)*(pol_pop)^(neg_trun_both$coefficients[4])
+
+
+
+models_comps <- list(poiss_gen, poiss_sex, poiss_ukr, poiss_both,
+                     negbin_gen, negbin_sex, negbin_ukr, negbin_both,
+                     poiss_trun, poiss_trun_sex, poiss_trun_ukr, poiss_trun_both,
+                     neg_trun, neg_trun_sex, neg_trun_ukr, neg_trun_both)
+
+```
+
+Model description
+
+
+```{r}
+models_comps %>% map("fitted.values") %>% map_dbl(~ sum( (border-.x)^2)) -> soss
+
+models_comps %>% map("coefficients") %>% map_dbl(length) -> par_number
+models_comps %>% map_dbl("maxlike") -> ll_models
+models_comps %>% map_dbl("aic") -> aic_models
+
+2*ll_models-log(NROW(border))*par_number -> bic_models
+
+## xi
+totals <- c("poisson"= sum(pop^models_comps[[1]]$coefficients[1]), 
+            "poisson sex" = sum(pop^(models_comps[[2]]$coefficients[1]+sex*models_comps[[2]]$coefficients[2])),
+            "poisson ukr" = sum(pop^(models_comps[[3]]$coefficients[1]+ukr*models_comps[[3]]$coefficients[2])),
+            "poisson both" = 
+              sum(pop^(models_comps[[4]]$coefficients[1]+ukr*models_comps[[4]]$coefficients[2]+
+                         sex*models_comps[[4]]$coefficients[3])),
+            "negbin" = sum(pop^models_comps[[5]]$coefficients[1]), 
+            "negbin sex" = sum(pop^(models_comps[[6]]$coefficients[1]+sex*models_comps[[6]]$coefficients[2])), 
+            "negbin ukr" = sum(pop^(models_comps[[7]]$coefficients[1]+ukr*models_comps[[7]]$coefficients[2])),
+            "negbin both" = 
+              sum(pop^(models_comps[[8]]$coefficients[1]+ukr*models_comps[[8]]$coefficients[2]+
+                         sex*models_comps[[8]]$coefficients[3])))
+
+## omega
+omega_hat <- c("poisson"= mean(pol_pop^models_comps[[1]]$coefficients[2]), 
+            "poisson sex" = mean(pol_pop^models_comps[[2]]$coefficients[3]), 
+            "poisson ukr" = mean(pol_pop^models_comps[[3]]$coefficients[3]), 
+            "poisson both" = mean(pol_pop^models_comps[[4]]$coefficients[4]), 
+            "negbin" = mean(pol_pop^models_comps[[5]]$coefficients[2]), 
+            "negbin sex" = mean(pol_pop^models_comps[[6]]$coefficients[3]), 
+            "negbin ukr" = mean(pol_pop^models_comps[[7]]$coefficients[3]), 
+            "negbin both" = mean(pol_pop^models_comps[[8]]$coefficients[4]))
+```
+
+
+Table for reporting
+
+```{r}
+data.frame(
+  model = c("poisson", "poisson sex", "poisson ukr", "poisson both",
+            "negbin", "negbin sex", "negbin ukr", "negbin both"),
+  logLik = ll_models,
+  aic = aic_models,
+  bic = bic_models,
+  soss = soss,
+  xi = totals,
+  omega = omega_hat
+)  %>%
+  xtable(caption = "sfsfsa", label = "tab-sg-basic", digits = 2) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+```
+
+poiss_trun <- gnlr(y = border, dist = tpoisson_ll, pmu = c(coef(m0)[1]+1, coef(m0)[2]))

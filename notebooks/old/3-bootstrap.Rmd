@@ -1,0 +1,92 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(maxLik)
+library(lmtest)
+library(tidyverse)
+library(broomExtra)
+```
+
+Data 
+
+```{r}
+data_for_model <- readRDS(file = "../data/data-for-model.rds") %>%
+  rename(m = border,
+         N = pesel,
+         n = police_all) %>%
+  mutate(ukr = as.numeric(country_new == "Ukraine"),
+         sex = as.numeric(sex == "Males"))
+```
+
+```{r}
+source("../codes/codes-models.R")
+```
+
+```{r}
+m0 <- lm(log(m/N) ~ -1 + log(N) + log(n/N), data = data_for_model)
+
+final_model <- data_for_model %>%
+  group_by(half) %>%
+  nest() %>%
+  do(model_ukr =   maxLik(logLik =lichun_ll_ukr, grad = lichun_ll_ukr_grad, hess = lichun_ll_ukr_hess, 
+                            data = .$data[[1]],
+                            method = "NR",
+                            start = c(alpha_0 = coef(m0)[1]+1, alpha_1 = coef(m0)[1]+0.95, 
+                                      beta_0 = coef(m0)[2], beta_1 = coef(m0)[2]-0.95 , phi = 1/sigma(m0))),
+     data = .$data[[1]])
+```
+
+Estimate m and p
+
+```{r}
+final_model %>%
+  mutate(M_overall = sum(.$data[[1]]$N^(coef(.$model_ukr[[1]])[1] + coef(.$model_ukr[[1]])[2]*.$data[[1]]$ukr)),
+         M_country = list(.$data[[1]]$N^(coef(.$model_ukr[[1]])[1] + coef(.$model_ukr[[1]])[2]*.$data[[1]]$ukr)),
+         p_overall = mean((.$data[[1]]$n/.$data[[1]]$N)^(coef(.$model_ukr[[1]])[1] + coef(.$model_ukr[[1]])[2]*.$data[[1]]$ukr)),
+         m_hat = ceiling(M_overall*p_overall)) -> for_boot
+```
+
+Bootstrapped samples
+
+```{r}
+set.seed(123)
+boots <- rmultinom(n = 500, size = for_boot$m_hat[[1]], prob = prop.table(for_boot$M_country[[1]]))
+```
+
+Bootstrap
+
+```{r}
+dt <- final_model$data[[1]]
+alphas_0 <- numeric(500)
+alphas_1 <- numeric(500)
+for (i in 1:500) {
+  cat(i, "\n")
+  dt$m <- as.numeric(boots[,i])
+  dt$m <- ifelse(dt$m == 0, 1, dt$m)
+  suppressWarnings(
+    suppressMessages(
+    model_res <- maxLik(logLik =lichun_ll_ukr, grad = lichun_ll_ukr_grad, hess = lichun_ll_ukr_hess, 
+                            data = dt,
+                            method = "NR",
+                            start = c(alpha_0 = coef(m0)[1]+1, alpha_1 = coef(m0)[1]+0.95, 
+                                      beta_0 = coef(m0)[2], beta_1 = coef(m0)[2]-0.95 , phi = 1/sigma(m0)))
+  )
+  )
+  alphas_0[i] <- coef(model_res)[1]
+  alphas_1[i] <- coef(model_res)[2]
+}
+```
+
+
+```{r}
+sum(final_model$data[[1]]$N^quantile(alphas_0, c(0.025)))
+sum(final_model$data[[1]]$N^quantile(alphas_0, c(0.90)))
+confint(final_model$model_ukr[[1]], level = .80)[1:2,]
+
+final_model$data[[1]]$N[final_model$data[[1]]$ukr == 1]^(0.5821435-0.1562100)
+final_model$data[[1]]$N[final_model$data[[1]]$ukr == 1]^(0.6657535+0.2870442)
+```
+

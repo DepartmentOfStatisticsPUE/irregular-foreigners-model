@@ -11,6 +11,7 @@ library(maxLik)
 library(actuar)
 library(mvnfast)
 library(SPIn)
+library(patchwork)
 ```
 
 Read the data
@@ -480,7 +481,7 @@ for (i in c(1:500)) {
 ## problem with 108 iter 
 boot_eta_1_hat <- do.call('rbind', boot_eta_1)
 boot_xi_1_hat <- apply(boot_eta_1_hat, 1, FUN = function(x) sum(N_1^(x[1]+x[2]*ukr_1)))
-mse_1 <- mean( (boot_xi_1_hat[-108]-boot_xi_1[-108])^2 ) 
+mse_1 <- mean( (boot_xi_1_hat-boot_xi_1)^2 ) 
 
 ###### second half
 set.seed(123)
@@ -511,21 +512,120 @@ mse_2 <- mean( (boot_xi_2_hat[-c(211, 308,492)]-boot_xi_2[-c(211, 308,492)])^2 )
 
 ```
 
-```{r}
-c(lower = sum(N_1^(.582307672+-0.002792677*ukr_1)), upper= sum(N_1^(0.7162209+0.1931608*ukr_1)))
-spin(boot_xi_1, lower = 0)
-quantile(boot_xi_1, probs = c(0.025, 0.975))
 
-c(lower = sum(N_2^(0.5930046+-0.0134986*ukr_2)), upper= sum(N_2^(0.7521351+0.2208545*ukr_2)))
-spin(boot_xi_2, lower = 0)
-quantile(boot_xi_2, probs = c(0.025, 0.975))
+```{r}
+data.frame(
+  zhang = c(lower = sum(N_1^(.582307672+-0.002792677*ukr_1)), upper= sum(N_1^(0.7162209+0.1931608*ukr_1))),
+  spin = spin(boot_xi_1, lower = 0),
+  quantile = quantile(boot_xi_1, probs = c(0.025, 0.975))) %>%
+  xtable(digits = 1) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
+
+data.frame(zhang = c(lower = sum(N_2^(0.5930046+-0.0134986*ukr_2)), upper= sum(N_2^(0.7521351+0.2208545*ukr_2))),
+  spin = spin(boot_xi_2, lower = 0),
+  quantile = quantile(boot_xi_2, probs = c(0.025, 0.975))) %>%
+  xtable(digits = 1) %>%
+  print.xtable(include.rownames = F, caption = "afasf", caption.placement = "top", format.args = list(big.mark = ","))
 
 ```
 
-MSE
+
+```{r}
+tibble(period = "31.03.2019", xi = boot_xi_1_hat/1000) %>%
+  bind_rows(tibble(period = "30.09.2019", xi = boot_xi_2_hat/1000)) %>%
+  ggplot(data = ., aes(x = xi)) + 
+  geom_histogram(fill = NA, color = "black", binwidth = 5) + 
+  geom_rug(alpha = 0.5) + 
+  facet_wrap(~period, nrow = 1) +
+  labs(x = "Estimated irregular population size (in thousands)", y = "Count") -> p_hist
+
+ggsave(plot = p_hist, filename = "../figs/fig-hist-mse.png", width = 6, height = 3)
+```
+
+
+Residuals for the models
+
+1 quarter
+
+```{r}
+kappa1 <- t2nb_model_ukr_1$estimate[4]
+mu1 <- as.numeric(t2nb_model_ukr_1$fitted)
+m1 <- t2nb_model_ukr_1$observed
+data1 <- subset(data_for_model, half == "At 31.03.2019")
+data1$resid <- ( 3/kappa1*( (1+kappa1*m1)^(2/3) - (1+kappa1*mu1)^(2/3) ) + 3*(m1^(2/3)-mu1^(2/3)) ) / (2*(mu1+kappa1*mu1^2)^(1/6))
+data1$mu <- mu1
+data1$label <- ifelse(abs(data1$resid) > 5, paste(data1$country_new, data1$sex, data1$age, sep = ", "), "")
+```
+
+Plots
+
+```{r}
+ggplot(data = data1, aes(x = sqrt(border), sqrt(mu))) + 
+  geom_point() + geom_abline(slope = 1, intercept = 0, linetype = "dashed")  + 
+  labs(x = expression(sqrt(m)), y = expression(sqrt(hat(mu))), title = "Comparison of observed and fitted values") -> p1resid
+
+ggplot(data = data1, aes(sample = resid)) + 
+  stat_qq() + stat_qq_line() +  
+  labs(x = "Theoretical quantile", y = "Sample quantile", title = "Normal Q-Q plot for Anscombe residuals") -> p2resid
+
+ggplot(data = data1, aes(x = sqrt(mu), y = abs(resid))) + 
+  geom_point() + geom_smooth(se = FALSE, linetype = "dashed", color = "black")  +
+  labs(x = expression(sqrt(mu)), y = expression(abs(hat(r))), title = "Comparison of squared fitted and absolute \nAnscombe residuals") -> p3resid
+
+ggplot(data = data1, aes(x = sqrt(mu), y = resid)) + 
+  geom_point() + geom_smooth(se = FALSE, linetype = "dashed", color = "black")  +
+  geom_hline(yintercept = 0, linetype = "dotted", color = "black") + 
+  labs(x = expression(sqrt(mu)), y = expression(hat(r)), title = "Comparison of squared fitted and Anscombe \nresiduals") -> p4resid
+
+p1resid + p2resid + p3resid + p4resid +
+  plot_annotation(tag_levels = 'A') -> plot_all
+
+ggsave(plot = plot_all, filename = "../figs/fig-resid-1-quart.png", width = 9, height = 9)
+```
+
+
+````{r}
+kappa2 <- t2nb_model_ukr_2$estimate[4]
+mu2 <- as.numeric(t2nb_model_ukr_2$fitted)
+m2 <- t2nb_model_ukr_2$observed
+data2 <- subset(data_for_model, half == "At 30.09.2019")
+data2$resid <- ( 3/kappa2*( (1+kappa2*m2)^(2/3) - (1+kappa2*mu2)^(2/3) ) + 3*(m2^(2/3)-mu2^(2/3)) ) / (2*(mu2+kappa1*mu2^2)^(1/6))
+data2$mu <- mu2
+
+```
 
 
 ```{r}
+ggplot(data = data2, aes(x = sqrt(border), sqrt(mu))) + 
+  geom_point() + geom_abline(slope = 1, intercept = 0, linetype = "dashed")  + 
+  labs(x = expression(sqrt(m)), y = expression(sqrt(hat(mu))), title = "Comparison of observed and fitted values") -> p1resid
+
+ggplot(data = data2, aes(sample = resid)) + 
+  stat_qq() + stat_qq_line() +  
+  labs(x = "Theoretical quantile", y = "Sample quantile", title = "Normal Q-Q plot for Anscombe residuals") -> p2resid
+
+ggplot(data = data2, aes(x = sqrt(mu), y = abs(resid))) + 
+  geom_point() + geom_smooth(se = FALSE, linetype = "dashed", color = "black")  +
+  labs(x = expression(sqrt(mu)), y = expression(abs(hat(r))), title = "Comparison of squared fitted and absolute \nAnscombe residuals") -> p3resid
+
+ggplot(data = data2, aes(x = sqrt(mu), y = resid)) + 
+  geom_point() + geom_smooth(se = FALSE, linetype = "dashed", color = "black")  +
+  geom_hline(yintercept = 0, linetype = "dotted", color = "black") + 
+  labs(x = expression(sqrt(mu)), y = expression(hat(r)), title = "Comparison of squared fitted and Anscombe \nresiduals") -> p4resid
+
+p1resid + p2resid + p3resid + p4resid +
+  plot_annotation(tag_levels = 'A') -> plot_all
+
+ggsave(plot = plot_all, filename = "../figs/fig-resid-2-quart.png", width = 9, height = 9)
+```
+
+
+```{r}
+data1 %>%
+  arrange(-abs(resid))
+
+data2 %>%
+  arrange(-abs(resid))
 
 ```
 

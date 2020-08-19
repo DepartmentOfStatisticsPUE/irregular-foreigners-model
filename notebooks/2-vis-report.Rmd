@@ -30,15 +30,15 @@ Table with basic data -- Number of foreigners and countries by source, sex and h
 ```{r}
 ### total
 countries_all %>%
-  count(country, half, wt = pesel, name = "pesel")  %>%
+  dplyr::count(country, half, wt = pesel, name = "pesel")  %>%
   left_join(
-    countries_all %>% count(country, half, wt = police_reg, name = "police_reg")
+    countries_all %>% dplyr::count(country, half, wt = police_reg, name = "police_reg")
   ) %>%
   left_join(
-    countries_all %>% count(country, half, wt = police_all, name = "police_all")
+    countries_all %>% dplyr::count(country, half, wt = police_all, name = "police_all")
   ) %>%
   left_join(
-    countries_all %>% count(country, half, wt = border, name = "border")
+    countries_all %>% dplyr::count(country, half, wt = border, name = "border")
   ) %>%
   group_by(half) %>%
   summarise_if(is.numeric,sum) %>%
@@ -50,15 +50,15 @@ countries_all %>%
 ```{r}
 ### by sex
 countries_all %>%
-  count(country, sex, half, wt = pesel, name = "pesel")  %>%
+  dplyr::count(country, sex, half, wt = pesel, name = "pesel")  %>%
   left_join(
-    countries_all %>% count(country, sex, half, wt = police_reg, name = "police_reg")
+    countries_all %>% dplyr::count(country, sex, half, wt = police_reg, name = "police_reg")
   ) %>%
   left_join(
-    countries_all %>% count(country, sex, half, wt = police_all, name = "police_all")
+    countries_all %>% dplyr::count(country, sex, half, wt = police_all, name = "police_all")
   ) %>%
   left_join(
-    countries_all %>% count(country, sex, half, wt = border, name = "border")
+    countries_all %>% dplyr::count(country, sex, half, wt = border, name = "border")
   ) %>%
   group_by(half, sex) %>%
   summarise_if(is.numeric,sum) %>%
@@ -73,24 +73,24 @@ countries_all %>%
 ## total countries
 countries_all %>%
   distinct(country, half) %>%
-  count(half,  name = "pesel")  %>%
+  dplyr::count(half,  name = "pesel")  %>%
   left_join(
     countries_all %>%
       filter(police_reg >0) %>%
       distinct(country, half) %>%
-      count(half, name = "police_reg")
+      dplyr::count(half, name = "police_reg")
   ) %>%
   left_join(
     countries_all %>%
       filter(police_all >0) %>%
       distinct(country, half) %>%
-      count(half, name = "police_all")
+      dplyr::count(half, name = "police_all")
   ) %>%
   left_join(
     countries_all %>%
       filter(border >0) %>%
       distinct(country, half) %>%
-      count(half, name = "border")
+      dplyr::count(half, name = "border")
   ) %>%
   group_by(half) %>%
   summarise_if(is.numeric,sum) %>%
@@ -152,7 +152,7 @@ countries_all %>%
   ungroup() %>%
   mutate(sex = factor(sex, 1:2, c("Females", "Males")),
          age = factor(age, 1:2, c("Working age", "Post-working age")),
-         half = factor(half, c("I", "II"), c("First half of 2019", "Second half of 2019"), ordered = T)) -> data_for_model
+         half = factor(half, c("I", "II"), c("At 31.03.2019", "At 30.09.2019"), ordered = T)) -> data_for_model
 ```
 
 Plots data for model
